@@ -24,8 +24,8 @@ public static class SnowBoarderSetup_Part1
     {
         RunPart1();
         SnowBoarderSetup_Part2.RunPart2();
+        SnowBoarderSetup_Part3.RunPart3();
         Debug.Log("=== SnowBoarder Full Setup Complete ===");
-        EditorUtility.DisplayDialog("Done", "SnowBoarder full setup complete!\nCheck Console for details.", "OK");
     }
 
     [MenuItem("SnowBoarder/Setup/Part 1 – Assets and Prefabs")]
