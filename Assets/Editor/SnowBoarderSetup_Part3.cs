@@ -159,13 +159,17 @@ public static class SnowBoarderSetup_Part3
         WireAudioManager(EnsureComponent<AudioManager>("AudioManager"), bgmClip);
         EnsureEventSystem();
 
+        // Adopt the original scene player first, then position spawn points relative to it
+        var p1GO = EnsurePlayerInScene("Player1", $"{PREFABS}/Player1.prefab", new Vector3(-43.5f, 14f, 0f));
+
         var sp1 = GameObject.Find("SpawnPoint_P1");
-        if (sp1 == null) { sp1 = new GameObject("SpawnPoint_P1"); sp1.transform.position = new Vector3(-1f, 2f, 0f); }
+        if (sp1 == null) sp1 = new GameObject("SpawnPoint_P1");
+        sp1.transform.position = p1GO.transform.position + Vector3.up * 3f;
 
         var sp2 = GameObject.Find("SpawnPoint_P2");
-        if (sp2 == null) { sp2 = new GameObject("SpawnPoint_P2"); sp2.transform.position = new Vector3(1f, 2f, 0f); }
+        if (sp2 == null) sp2 = new GameObject("SpawnPoint_P2");
+        sp2.transform.position = p1GO.transform.position + new Vector3(3f, 3f, 0f);
 
-        var p1GO = EnsurePlayerInScene("Player1", $"{PREFABS}/Player1.prefab", sp1.transform.position);
         var p2GO = EnsurePlayerInScene("Player2", $"{PREFABS}/Player2.prefab", sp2.transform.position);
 
         WirePlayerComponents(p1GO, sp1.transform, crashClip, "Player");
@@ -198,6 +202,20 @@ public static class SnowBoarderSetup_Part3
             flSO.ApplyModifiedProperties();
         }
 
+        // PvP uses manual split-screen cameras — disable Cinemachine to prevent conflicts
+        foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (mb == null) continue;
+            var tn = mb.GetType().FullName;
+            if (tn.Contains("CinemachineBrain") || tn.Contains("CinemachineVirtualCamera"))
+            {
+                var cso = new SerializedObject(mb);
+                cso.FindProperty("m_Enabled").boolValue = false;
+                cso.ApplyModifiedProperties();
+                Debug.Log($"[Part3] Disabled {tn} for PvP split-screen");
+            }
+        }
+
         void WireCam(string camName, GameObject playerTarget)
         {
             var camGO = GameObject.Find(camName);
@@ -207,8 +225,7 @@ public static class SnowBoarderSetup_Part3
             SetRef(cfSO, "target", playerTarget.transform);
             cfSO.ApplyModifiedProperties();
 
-            var offProp = cfSO.FindProperty("offset");
-            Vector3 off     = offProp != null ? offProp.vector3Value : new Vector3(0f, 2f, -10f);
+            Vector3 off     = new Vector3(0f, 2f, -10f);
             Vector3 snapPos = playerTarget.transform.position + off;
             snapPos.z = off.z;
             camGO.transform.position = snapPos;
@@ -225,7 +242,6 @@ public static class SnowBoarderSetup_Part3
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
 
-        EnsureTerrainCollision();
         BuildPausePanel();
 
         EditorSceneManager.SaveScene(scene);
@@ -267,10 +283,13 @@ public static class SnowBoarderSetup_Part3
             mainCamSolo.orthographicSize = 5f;
         }
 
-        var respawn = GameObject.Find("RespawnPoint");
-        if (respawn == null) { respawn = new GameObject("RespawnPoint"); respawn.transform.position = new Vector3(-1f, 2f, 0f); }
+        // Find or adopt the existing player first, then anchor respawn above it
+        var p1GO = EnsurePlayerInScene("Player1", $"{PREFABS}/Player1.prefab", new Vector3(-43.5f, 14f, 0f));
 
-        var p1GO = EnsurePlayerInScene("Player1", $"{PREFABS}/Player1.prefab", respawn.transform.position);
+        var respawn = GameObject.Find("RespawnPoint");
+        if (respawn == null) respawn = new GameObject("RespawnPoint");
+        respawn.transform.position = p1GO.transform.position + Vector3.up * 3f;
+
         WirePlayerComponents(p1GO, respawn.transform, crashClip, "Player");
 
         var hud = BuildSoloHUDCanvas(p1GO);
@@ -291,20 +310,12 @@ public static class SnowBoarderSetup_Part3
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
 
-        EnsureTerrainCollision();
-
-        var mainCam = Object.FindAnyObjectByType<Camera>();
-        if (mainCam != null)
+        // Solo: Cinemachine VirtualCamera already follows the player — remove any stale CameraFollow
+        // that would conflict with CinemachineBrain on the Main Camera.
+        foreach (var cam in Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            var cf = mainCam.gameObject.GetComponent<CameraFollow>() ?? mainCam.gameObject.AddComponent<CameraFollow>();
-            var so = new SerializedObject(cf);
-            SetRef(so, "target", p1GO.transform);
-            so.ApplyModifiedProperties();
-            var offProp = so.FindProperty("offset");
-            Vector3 off     = offProp != null ? offProp.vector3Value : new Vector3(0f, 2f, -10f);
-            Vector3 snapPos = p1GO.transform.position + off;
-            snapPos.z = off.z;
-            mainCam.transform.position = snapPos;
+            var stale = cam.GetComponent<CameraFollow>();
+            if (stale != null) Object.DestroyImmediate(stale);
         }
 
         BuildPausePanel();
@@ -421,6 +432,26 @@ public static class SnowBoarderSetup_Part3
 
     static void WirePlayerComponents(GameObject pGO, Transform respawn, AudioClip crashClip, string playerTag)
     {
+        // Update Rigidbody2D physics to match our tuned player spec
+        var rb = pGO.GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.gravityScale           = 2.5f;
+            rb.linearDamping          = 0f;
+            rb.angularDamping         = 4f;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            rb.interpolation          = RigidbodyInterpolation2D.Interpolate;
+            EditorUtility.SetDirty(rb);
+        }
+
+        // Add our custom scripts to this player if missing (e.g. adopted original scene player)
+        if (!pGO.GetComponent<PlayerController>())             pGO.AddComponent<PlayerController>();
+        if (!pGO.GetComponent<ScoreManager>())                 pGO.AddComponent<ScoreManager>();
+        if (!pGO.GetComponent<LivesManager>())                 pGO.AddComponent<LivesManager>();
+        if (!pGO.GetComponent<TrickManager>())                 pGO.AddComponent<TrickManager>();
+        if (!pGO.GetComponentInChildren<CrashHandler>())       pGO.AddComponent<CrashHandler>();
+        if (!pGO.GetComponentInChildren<GroundChecker>())      pGO.AddComponent<GroundChecker>();
+
         var pAS = pGO.GetComponent<AudioSource>();
         if (pAS == null) pAS = pGO.AddComponent<AudioSource>();
         pAS.playOnAwake = false;
@@ -465,6 +496,8 @@ public static class SnowBoarderSetup_Part3
         {
             var so = new SerializedObject(gc);
             so.FindProperty("groundLayer").intValue = ~0;
+            var rayProp = so.FindProperty("rayLength");
+            if (rayProp != null) rayProp.floatValue = 1.3f;
             so.ApplyModifiedProperties();
         }
 
@@ -537,23 +570,35 @@ public static class SnowBoarderSetup_Part3
         return child.AddComponent<TComp>();
     }
 
-    static GameObject EnsurePlayerInScene(string name, string prefabPath, Vector3 pos)
+    static GameObject EnsurePlayerInScene(string name, string prefabPath, Vector3 fallbackPos)
     {
-        var existing = GameObject.Find(name);
-        if (existing != null) return existing;
+        var byName = GameObject.Find(name);
+        if (byName != null) return byName;
+
+        // Adopt the first Rigidbody2D with the correct tag (e.g. the original "Barry" tagged "Player")
+        string tag = (name == "Player2") ? "Player2" : "Player";
+        foreach (var rb in Object.FindObjectsByType<Rigidbody2D>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (!rb.gameObject.CompareTag(tag)) continue;
+            if (name == "Player1" && rb.gameObject.name == "Player2") continue;
+            if (name == "Player2" && rb.gameObject.name == "Player1") continue;
+            rb.gameObject.name = name;
+            Debug.Log($"[Part3] Adopted existing '{tag}' object as {name}");
+            return rb.gameObject;
+        }
 
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         if (prefab == null)
         {
             Debug.LogError($"[Part3] Prefab missing: {prefabPath} — run Part 1 first.");
             var fallback = new GameObject(name);
-            fallback.transform.position = pos;
+            fallback.transform.position = fallbackPos;
             return fallback;
         }
-
         var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
         instance.name = name;
-        instance.transform.position = pos;
+        instance.transform.position = fallbackPos;
+        Debug.Log($"[Part3] Created new {name} at {fallbackPos}");
         return instance;
     }
 
