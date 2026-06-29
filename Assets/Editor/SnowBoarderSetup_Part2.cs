@@ -196,13 +196,11 @@ public static class SnowBoarderSetup_Part2
             camGO.AddComponent<AudioListener>();
             camGO.tag = "MainCamera";
         }
-        mainCam.rect = new Rect(0f, 0f, 0.5f, 1f);
+        ApplySharedCamSettings(mainCam, 0, new Rect(0f, 0f, 0.5f, 1f));
 
         var cam2GO = new GameObject("Camera2");
         var cam2   = cam2GO.AddComponent<Camera>();
-        cam2.depth      = 1;
-        cam2.rect       = new Rect(0.5f, 0f, 0.5f, 1f);
-        cam2.clearFlags = CameraClearFlags.Depth;
+        ApplySharedCamSettings(cam2, 1, new Rect(0.5f, 0f, 0.5f, 1f));
 
         var divCanvas = new GameObject("Canvas_Divider");
         var dc = divCanvas.AddComponent<Canvas>();
@@ -319,6 +317,16 @@ public static class SnowBoarderSetup_Part2
         var so   = new SerializedObject(ctrl);
         so.FindProperty("overlayRoot").objectReferenceValue = overlay;
         so.ApplyModifiedProperties();
+    }
+
+    static void ApplySharedCamSettings(Camera cam, int depth, Rect rect)
+    {
+        cam.clearFlags       = CameraClearFlags.SolidColor;
+        cam.backgroundColor  = new Color(0.52f, 0.80f, 0.98f, 1f);
+        cam.orthographic     = true;
+        cam.orthographicSize = 5f;
+        cam.depth            = depth;
+        cam.rect             = rect;
     }
 
     static void SetSkyBg()

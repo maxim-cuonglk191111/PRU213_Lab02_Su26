@@ -74,8 +74,15 @@ public static class SnowBoarderSetup_Part1
     static void CreatePhysicsMaterial()
     {
         const string path = "Assets/Physics/SnowMaterial.physicsMaterial2D";
-        if (AssetDatabase.LoadAssetAtPath<PhysicsMaterial2D>(path) != null) return;
-        var mat = new PhysicsMaterial2D("SnowMaterial") { friction = 0.4f, bounciness = 0f };
+        var existing = AssetDatabase.LoadAssetAtPath<PhysicsMaterial2D>(path);
+        if (existing != null)
+        {
+            existing.friction   = 0.05f;
+            existing.bounciness = 0f;
+            EditorUtility.SetDirty(existing);
+            return;
+        }
+        var mat = new PhysicsMaterial2D("SnowMaterial") { friction = 0.05f, bounciness = 0f };
         AssetDatabase.CreateAsset(mat, path);
         Debug.Log($"[Part1] Created {path}");
     }
@@ -129,13 +136,12 @@ public static class SnowBoarderSetup_Part1
         root.layer = LayerMask.NameToLayer("Default");
 
         var rb = root.AddComponent<Rigidbody2D>();
-        rb.mass        = 1f;
-        rb.angularDamping = 5f;
+        rb.mass                  = 1f;
+        rb.linearDamping         = 0f;
+        rb.angularDamping        = 4f;
+        rb.gravityScale          = 2.5f;
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-
-        var cc = root.AddComponent<CapsuleCollider2D>();
-        cc.size = new Vector2(0.4f, 0.6f);
-        cc.offset = new Vector2(0f, 0.1f);
+        rb.interpolation         = RigidbodyInterpolation2D.Interpolate;
 
         root.AddComponent<PlayerController>();
         root.AddComponent<ScoreManager>();
@@ -149,7 +155,7 @@ public static class SnowBoarderSetup_Part1
         topSR.color = tint;
         topSR.sortingLayerName = "Player";
         var topCol = top.AddComponent<CircleCollider2D>();
-        topCol.radius = 0.25f;
+        topCol.radius = 0.22f;
         top.AddComponent<CrashHandler>();
 
         var bot = new GameObject("Boarder_Bottom");
@@ -161,8 +167,11 @@ public static class SnowBoarderSetup_Part1
 
         var botCol = bot.AddComponent<CapsuleCollider2D>();
         botCol.direction = CapsuleDirection2D.Horizontal;
-        botCol.size = new Vector2(1.2f, 0.15f);
-        botCol.offset = new Vector2(0f, -0.05f);
+        botCol.size      = new Vector2(2.0f, 0.15f);
+        botCol.offset    = new Vector2(0f, 0f);
+
+        var snowMat = AssetDatabase.LoadAssetAtPath<PhysicsMaterial2D>("Assets/Physics/SnowMaterial.physicsMaterial2D");
+        if (snowMat != null) botCol.sharedMaterial = snowMat;
 
         bot.AddComponent<GroundChecker>();
 

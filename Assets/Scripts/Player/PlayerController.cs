@@ -7,9 +7,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private InputConfig inputConfig;
 
     [Header("Physics")]
-    [SerializeField] private float rotationSpeed  = 100f;
-    [SerializeField] private float thrustForce    = 40f;
-    [SerializeField] private float maxAngularSpeed = 300f;
+    [SerializeField] private float rotationSpeed   = 400f;
+    [SerializeField] private float thrustForce     = 12f;
+    [SerializeField] private float maxAngularSpeed = 400f;
+    [SerializeField] private float maxSpeed        = 25f;
 
     private Rigidbody2D _rb;
     private bool _isDisabled;
@@ -26,21 +27,32 @@ public class PlayerController : MonoBehaviour
         if (_isDisabled || inputConfig == null) return;
         HandleRotation();
         HandleThrust();
+        ClampSpeed();
     }
 
     private void HandleRotation()
     {
-        if (Input.GetKey(inputConfig.rotateLeft))
-            _rb.AddTorque(rotationSpeed * Time.fixedDeltaTime * 60f);
-        if (Input.GetKey(inputConfig.rotateRight))
-            _rb.AddTorque(-rotationSpeed * Time.fixedDeltaTime * 60f);
-        _rb.angularVelocity = Mathf.Clamp(_rb.angularVelocity, -maxAngularSpeed, maxAngularSpeed);
+        float dir = 0f;
+        if (Input.GetKey(inputConfig.rotateLeft))  dir =  1f;
+        if (Input.GetKey(inputConfig.rotateRight)) dir = -1f;
+
+        _rb.angularVelocity = Mathf.MoveTowards(
+            _rb.angularVelocity,
+            dir * maxAngularSpeed,
+            rotationSpeed * Time.fixedDeltaTime * 60f
+        );
     }
 
     private void HandleThrust()
     {
-        if (Input.GetKey(inputConfig.thrust))
-            _rb.AddForce(transform.up * thrustForce, ForceMode2D.Force);
+        if (!Input.GetKey(inputConfig.thrust)) return;
+        _rb.AddForce(transform.right * thrustForce, ForceMode2D.Force);
+    }
+
+    private void ClampSpeed()
+    {
+        if (_rb.linearVelocity.sqrMagnitude > maxSpeed * maxSpeed)
+            _rb.linearVelocity = _rb.linearVelocity.normalized * maxSpeed;
     }
 
     public void SetInputEnabled(bool enabled)

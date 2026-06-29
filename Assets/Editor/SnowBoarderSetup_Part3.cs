@@ -216,16 +216,10 @@ public static class SnowBoarderSetup_Part3
         WireCam("Main Camera", p1GO);
         WireCam("Camera2",     p2GO);
 
-        var cam2GO = GameObject.Find("Camera2");
-        if (cam2GO != null)
-        {
-            var cam2 = cam2GO.GetComponent<Camera>();
-            if (cam2 != null)
-            {
-                cam2.clearFlags      = CameraClearFlags.SolidColor;
-                cam2.backgroundColor = new Color(0.52f, 0.80f, 0.98f, 1f);
-            }
-        }
+        var pvpCam1 = GameObject.Find("Main Camera")?.GetComponent<Camera>();
+        if (pvpCam1 != null) ApplySharedCamSettings(pvpCam1, 0, new Rect(0f, 0f, 0.5f, 1f));
+        var pvpCam2 = GameObject.Find("Camera2")?.GetComponent<Camera>();
+        if (pvpCam2 != null) ApplySharedCamSettings(pvpCam2, 1, new Rect(0.5f, 0f, 0.5f, 1f));
 
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
@@ -250,8 +244,26 @@ public static class SnowBoarderSetup_Part3
         EnsureComponent<GameManager>("GameManager");
         EnsureEventSystem();
 
+        foreach (var go in GameObject.FindGameObjectsWithTag("Player2"))
+            Object.DestroyImmediate(go);
         var strayP2 = GameObject.Find("Player2");
-        if (strayP2 != null) { Object.DestroyImmediate(strayP2); Debug.Log("[Part3] Removed stray Player2 from Level1 solo scene."); }
+        if (strayP2 != null) Object.DestroyImmediate(strayP2);
+        var strayPvP = Object.FindAnyObjectByType<PvPGameManager>();
+        if (strayPvP != null) Object.DestroyImmediate(strayPvP.gameObject);
+        foreach (var name in new[] { "Camera2", "Canvas_Divider", "Canvas_HUD_P1", "Canvas_HUD_P2", "HUDManager_PvP", "SpawnPoint_P1", "SpawnPoint_P2" })
+        {
+            var found = GameObject.Find(name);
+            if (found != null) Object.DestroyImmediate(found);
+        }
+        var mainCamSolo = Object.FindAnyObjectByType<Camera>();
+        if (mainCamSolo != null)
+        {
+            mainCamSolo.rect        = new Rect(0f, 0f, 1f, 1f);
+            mainCamSolo.clearFlags  = CameraClearFlags.SolidColor;
+            mainCamSolo.backgroundColor = new Color(0.52f, 0.80f, 0.98f, 1f);
+            mainCamSolo.orthographic = true;
+            mainCamSolo.orthographicSize = 5f;
+        }
 
         var respawn = GameObject.Find("RespawnPoint");
         if (respawn == null) { respawn = new GameObject("RespawnPoint"); respawn.transform.position = new Vector3(-1f, 2f, 0f); }
@@ -632,6 +644,16 @@ public static class SnowBoarderSetup_Part3
         lrt.offsetMax = Vector2.zero;
 
         return btn;
+    }
+
+    static void ApplySharedCamSettings(Camera cam, int depth, Rect rect)
+    {
+        cam.clearFlags       = CameraClearFlags.SolidColor;
+        cam.backgroundColor  = new Color(0.52f, 0.80f, 0.98f, 1f);
+        cam.orthographic     = true;
+        cam.orthographicSize = 5f;
+        cam.depth            = depth;
+        cam.rect             = rect;
     }
 
     static bool SceneExists(string sceneName)
