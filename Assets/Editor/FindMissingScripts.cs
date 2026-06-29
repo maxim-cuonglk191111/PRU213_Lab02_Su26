@@ -6,7 +6,7 @@ public class FindMissingScripts
     [MenuItem("Tools/Find Missing Scripts In Loaded Scene")]
     public static void FindInScene()
     {
-        GameObject[] go = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        GameObject[] go = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include);
         int go_count = 0, components_count = 0, missing_count = 0;
         foreach (GameObject g in go)
         {

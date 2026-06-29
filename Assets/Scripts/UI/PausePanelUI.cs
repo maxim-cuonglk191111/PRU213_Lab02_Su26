@@ -12,6 +12,13 @@ public class PausePanelUI : MonoBehaviour
     public void GoToMainMenu()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene("MainMenu");
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.LoadSceneWithFade("MainMenu");
+        }
+        else
+        {
+            SceneManager.LoadScene("MainMenu");
+        }
     }
 }

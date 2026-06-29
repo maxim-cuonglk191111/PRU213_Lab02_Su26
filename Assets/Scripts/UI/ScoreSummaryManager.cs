@@ -49,8 +49,16 @@ public class ScoreSummaryManager : MonoBehaviour
         int dist = PlayerPrefs.GetInt("LastDistance", 0);
         if (distanceText != null) distanceText.text = $"Distance: {dist}m";
 
-        if (replayButton   != null) replayButton.onClick.AddListener(()   => SceneManager.LoadScene("Level1"));
-        if (mainMenuButton != null) mainMenuButton.onClick.AddListener(() => SceneManager.LoadScene("MainMenu"));
+        if (replayButton != null) replayButton.onClick.AddListener(() =>
+        {
+            if (GameManager.Instance != null) GameManager.Instance.LoadSceneWithFade("Level1");
+            else SceneManager.LoadScene("Level1");
+        });
+        if (mainMenuButton != null) mainMenuButton.onClick.AddListener(() =>
+        {
+            if (GameManager.Instance != null) GameManager.Instance.LoadSceneWithFade("MainMenu");
+            else SceneManager.LoadScene("MainMenu");
+        });
     }
 
     static Button FindBtn(string name) => GameObject.Find(name)?.GetComponent<Button>();

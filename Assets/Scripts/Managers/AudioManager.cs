@@ -37,6 +37,22 @@ public class AudioManager : MonoBehaviour
     public float masterVolume = 1f;
     public float sfxVolume = 1f;
 
+    public float SFXVolume 
+    { 
+        get => sfxVolume; 
+        set { sfxVolume = value; if (sfxSource != null) sfxSource.volume = value; } 
+    }
+    public float MusicVolume 
+    { 
+        get => masterVolume; 
+        set { masterVolume = value; if (bgmSource != null) bgmSource.volume = value; if (musicSource != null) musicSource.volume = value; } 
+    }
+
+    public void PlaySFX(AudioClip clip, float volumeScale = 1f)
+    {
+        if (clip != null && sfxSource != null) sfxSource.PlayOneShot(clip, sfxVolume * volumeScale);
+    }
+
     void Awake()
     {
         if (Instance == null)

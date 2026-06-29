@@ -63,8 +63,8 @@ public class FinishLine : MonoBehaviour
         }
         else
         {
-            if (ScoreManager.Instance != null)
-                ScoreManager.Instance.AddScore(finishBonus);
+            var sm = other.GetComponent<ScoreManager>();
+            if (sm != null) sm.AddScore(finishBonus);
 
             Invoke(nameof(TriggerFinish), 1f);
         }

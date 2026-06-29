@@ -64,6 +64,9 @@ public static class SnowBoarderSetup_Part2
         tmp.fontSize  = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.outlineWidth = 0.2f;
+        tmp.outlineColor = new Color32(0, 0, 0, 255);
         var rt = go.GetComponent<RectTransform>();
         rt.anchoredPosition = pos;
         rt.sizeDelta        = size;

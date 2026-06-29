@@ -9,6 +9,8 @@ TagManager:
   - Obstacle
   - Pickup
   - PowerUp
+  - SlowDown
+  - Penalty
   layers:
   - Default
   - TransparentFX

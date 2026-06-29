@@ -27,7 +27,7 @@ public class CrashHandler : MonoBehaviour
 
     void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.collider.GetType() == typeof(CircleCollider2D))
+        if (collision.otherCollider.GetType() == typeof(CircleCollider2D))
         {
             if (collision.gameObject.CompareTag("Ground") || collision.gameObject.CompareTag("Obstacle"))
             {
@@ -35,6 +35,8 @@ public class CrashHandler : MonoBehaviour
             }
         }
     }
+
+    public void ForceCrash() => HandleCrash();
 
     void HandleCrash()
     {
@@ -50,7 +52,8 @@ public class CrashHandler : MonoBehaviour
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlayCrashSound();
 
-            if (TrickManager.Instance != null) TrickManager.Instance.ResetCombo();
+            var tm = GetComponent<TrickManager>();
+            if (tm != null) tm.ResetCombo();
 
             Invoke(nameof(NotifyGameManager), loadDelay);
         }
@@ -58,7 +61,32 @@ public class CrashHandler : MonoBehaviour
 
     void NotifyGameManager()
     {
-        if (GameManager.Instance != null)
+        var lives = GetComponent<LivesManager>();
+        if (lives == null) lives = GetComponentInParent<LivesManager>();
+
+        if (lives != null)
+        {
+            lives.LoseLife();
+            hasCrashed = false; // Reset crash state for next life
+            playerController.ResetAll(); // Re-enable controls
+            
+            var respawn = GameObject.Find("RespawnPoint");
+            if (respawn != null)
+            {
+                transform.position = respawn.transform.position;
+                var rb = GetComponent<Rigidbody2D>();
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector2.zero;
+                    rb.angularVelocity = 0f;
+                    transform.rotation = Quaternion.identity;
+                }
+                
+                var cam = Object.FindAnyObjectByType<CameraFollow>();
+                if (cam != null) cam.SnapToPlayer();
+            }
+        }
+        else if (GameManager.Instance != null)
         {
             GameManager.Instance.PlayerCrashed();
         }

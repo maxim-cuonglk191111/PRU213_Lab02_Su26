@@ -31,8 +31,8 @@ public class GlobalMissingScriptFinder
             {
                 // we can't easily open scenes in batchmode cleanly like this, but let's check
                 var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(path, UnityEditor.SceneManagement.OpenSceneMode.Single);
-                GameObject[] go = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-                foreach (GameObject g in go)
+                GameObject[] gos = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include);
+                foreach (GameObject g in gos)
                 {
                     Component[] components = g.GetComponents<Component>();
                     for (int i = 0; i < components.Length; i++)

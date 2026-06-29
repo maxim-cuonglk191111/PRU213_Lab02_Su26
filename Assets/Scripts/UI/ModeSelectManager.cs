@@ -20,13 +20,25 @@ public class ModeSelectManager : MonoBehaviour
         if (pvpButton  == null) pvpButton  = FindBtn("PvP_Btn");
         if (backButton == null) backButton = FindBtn("Back_Btn");
 
-        if (soloButton != null) soloButton.onClick.AddListener(() => SceneManager.LoadScene("Level1"));
+        if (soloButton != null) soloButton.onClick.AddListener(() =>
+        {
+            if (GameManager.Instance != null) GameManager.Instance.LoadSceneWithFade("Level1");
+            else SceneManager.LoadScene("Level1");
+        });
         else Debug.LogWarning("[ModeSelectManager] soloButton not found!");
 
-        if (pvpButton  != null) pvpButton.onClick.AddListener(()  => SceneManager.LoadScene("Level1_PvP"));
+        if (pvpButton != null) pvpButton.onClick.AddListener(() =>
+        {
+            if (GameManager.Instance != null) GameManager.Instance.LoadSceneWithFade("Level1_PvP");
+            else SceneManager.LoadScene("Level1_PvP");
+        });
         else Debug.LogWarning("[ModeSelectManager] pvpButton not found!");
 
-        if (backButton != null) backButton.onClick.AddListener(() => SceneManager.LoadScene("MainMenu"));
+        if (backButton != null) backButton.onClick.AddListener(() =>
+        {
+            if (GameManager.Instance != null) GameManager.Instance.LoadSceneWithFade("MainMenu");
+            else SceneManager.LoadScene("MainMenu");
+        });
         else Debug.LogWarning("[ModeSelectManager] backButton not found!");
 
         // Ensure EventSystem

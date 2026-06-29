@@ -36,8 +36,16 @@ public class PvPSummaryManager : MonoBehaviour
         if (p1ScoreText != null) p1ScoreText.text = $"P1 Score: {PvPGameManager.P1Score}";
         if (p2ScoreText != null) p2ScoreText.text = $"P2 Score: {PvPGameManager.P2Score}";
 
-        if (rematchButton  != null) rematchButton.onClick.AddListener(()  => SceneManager.LoadScene("Level1_PvP"));
-        if (mainMenuButton != null) mainMenuButton.onClick.AddListener(() => SceneManager.LoadScene("MainMenu"));
+        if (rematchButton != null) rematchButton.onClick.AddListener(() =>
+        {
+            if (GameManager.Instance != null) GameManager.Instance.LoadSceneWithFade("Level1_PvP");
+            else SceneManager.LoadScene("Level1_PvP");
+        });
+        if (mainMenuButton != null) mainMenuButton.onClick.AddListener(() =>
+        {
+            if (GameManager.Instance != null) GameManager.Instance.LoadSceneWithFade("MainMenu");
+            else SceneManager.LoadScene("MainMenu");
+        });
     }
 
     static Button FindBtn(string name) => GameObject.Find(name)?.GetComponent<Button>();

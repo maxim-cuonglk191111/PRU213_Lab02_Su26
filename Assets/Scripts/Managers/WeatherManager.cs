@@ -329,9 +329,10 @@ public class WeatherManager : MonoBehaviour
 
     IEnumerator TriggerGust()
     {
-        if (UIManager.Instance != null)
+        var hud = Object.FindAnyObjectByType<HUDManager>();
+        if (hud != null)
         {
-            UIManager.Instance.ShowNotification("WARNING: GIÓ GIẬT CỰC MẠNH! (BLIZZARD GUST!)");
+            hud.ShowToast("WARNING: GIÓ GIẬT CỰC MẠNH! (BLIZZARD GUST!)");
         }
 
         IsGustActive = true;

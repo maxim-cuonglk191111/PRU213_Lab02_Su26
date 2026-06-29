@@ -36,6 +36,13 @@ public class PlayerController : MonoBehaviour
     public float invincibilityDuration = 3f;
     public float invincibilityBlinkInterval = 0.15f;
 
+    [Header("Input Keys")]
+    public UnityEngine.InputSystem.Key rotateLeftKey = UnityEngine.InputSystem.Key.A;
+    public UnityEngine.InputSystem.Key rotateRightKey = UnityEngine.InputSystem.Key.D;
+    public UnityEngine.InputSystem.Key boostKey = UnityEngine.InputSystem.Key.W;
+    public UnityEngine.InputSystem.Key brakeKey = UnityEngine.InputSystem.Key.S;
+    public UnityEngine.InputSystem.Key jumpKey = UnityEngine.InputSystem.Key.Space;
+
     [Header("References (Auto-populated)")]
     public Rigidbody2D rb;
     public SpriteRenderer playerSprite;
@@ -54,6 +61,40 @@ public class PlayerController : MonoBehaviour
 
     void Start()
     {
+        if (gameObject.CompareTag("Player2"))
+        {
+            rotateLeftKey = UnityEngine.InputSystem.Key.LeftArrow;
+            rotateRightKey = UnityEngine.InputSystem.Key.RightArrow;
+            boostKey = UnityEngine.InputSystem.Key.UpArrow;
+            brakeKey = UnityEngine.InputSystem.Key.DownArrow;
+            jumpKey = UnityEngine.InputSystem.Key.RightCtrl;
+            
+            var tm = GetComponent<TrickManager>();
+            if (tm != null)
+            {
+                tm.indyGrabKey = UnityEngine.InputSystem.Key.U;
+                tm.methodGrabKey = UnityEngine.InputSystem.Key.I;
+            }
+        }
+
+        // --- FIX LEGACY PREFAB COLLIDER BUG ---
+        // The reference prefab had the CircleCollider (head) and CapsuleCollider (body) exactly overlapping at (0,0).
+        // This caused the player to instantly die when hitting the ground, and clip into the ground.
+        var headCol = GetComponent<CircleCollider2D>();
+        if (headCol != null)
+        {
+            headCol.radius = 0.25f;
+            headCol.offset = new Vector2(0f, 0.35f); // Move UP to the head
+        }
+        
+        var capCol = GetComponent<CapsuleCollider2D>();
+        if (capCol != null)
+        {
+            capCol.direction = CapsuleDirection2D.Horizontal;
+            capCol.size = new Vector2(1.2f, 0.25f);
+            capCol.offset = new Vector2(0f, -0.35f); // Move DOWN to the snowboard
+        }
+
         // Cấu hình tốc độ linh hoạt theo từng Level để đảm bảo trải nghiệm chơi mượt mà và thử thách cân bằng
         string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
         if (sceneName == "Level1")
@@ -134,20 +175,17 @@ public class PlayerController : MonoBehaviour
         isBraking = false;
         if (UnityEngine.InputSystem.Keyboard.current == null) return;
 
-        if (UnityEngine.InputSystem.Keyboard.current.leftArrowKey.isPressed ||
-            UnityEngine.InputSystem.Keyboard.current.aKey.isPressed)
+        if (UnityEngine.InputSystem.Keyboard.current[rotateLeftKey].isPressed)
         {
             rotationInput = 1f;
         }
-        else if (UnityEngine.InputSystem.Keyboard.current.rightArrowKey.isPressed ||
-                 UnityEngine.InputSystem.Keyboard.current.dKey.isPressed)
+        else if (UnityEngine.InputSystem.Keyboard.current[rotateRightKey].isPressed)
         {
             rotationInput = -1f;
         }
 
-        // Phím hãm tốc: S hoặc mũi tên xuống
-        if (UnityEngine.InputSystem.Keyboard.current.downArrowKey.isPressed ||
-            UnityEngine.InputSystem.Keyboard.current.sKey.isPressed)
+        // Phím hãm tốc
+        if (UnityEngine.InputSystem.Keyboard.current[brakeKey].isPressed)
         {
             isBraking = true;
         }
@@ -179,8 +217,7 @@ public class PlayerController : MonoBehaviour
         float targetXSpeed = baseSpeed * minSpeedMultiplier;
 
         if (UnityEngine.InputSystem.Keyboard.current != null && 
-            (UnityEngine.InputSystem.Keyboard.current.upArrowKey.isPressed || 
-             UnityEngine.InputSystem.Keyboard.current.wKey.isPressed))
+            UnityEngine.InputSystem.Keyboard.current[boostKey].isPressed)
         {
             // Khi đang boost, ngưỡng mục tiêu cũng giảm một phần khi có gust
             float boostMultiplier = Mathf.Lerp(0.95f, 0.65f, gustRatio);
@@ -206,6 +243,19 @@ public class PlayerController : MonoBehaviour
         if (rb.linearVelocity.magnitude > maxSpeed)
         {
             rb.linearVelocity = rb.linearVelocity.normalized * maxSpeed;
+        }
+    }
+
+    public void ShowToast(string message)
+    {
+        var soloHud = Object.FindAnyObjectByType<HUDManager>();
+        if (soloHud != null) { soloHud.ShowToast(message); return; }
+
+        var pvpHud = Object.FindAnyObjectByType<HUDManager_PvP>();
+        if (pvpHud != null)
+        {
+            if (gameObject.CompareTag("Player")) pvpHud.ShowP1Toast(message);
+            else pvpHud.ShowP2Toast(message);
         }
     }
 
@@ -244,8 +294,9 @@ public class PlayerController : MonoBehaviour
         {
             if (!isInvincible)
             {
-                if (ScoreManager.Instance != null) ScoreManager.Instance.AddScore(-300);
-                if (UIManager.Instance != null) UIManager.Instance.ShowFloatingText("-300", transform.position);
+                var sm = GetComponent<ScoreManager>();
+                if (sm != null) sm.AddScore(-300);
+                ShowToast("-300 Penalty!");
                 if (AudioManager.Instance != null) AudioManager.Instance.PlayCrashSound();
                 StartCoroutine(FlashRedCoroutine(0.5f));
             }
@@ -276,7 +327,8 @@ public class PlayerController : MonoBehaviour
         {
             if (effector != null) effector.speed = baseSpeed;
         }
-        if (UIManager.Instance != null) UIManager.Instance.ShowFloatingText("SLOWED!", transform.position);
+        var hud = Object.FindAnyObjectByType<HUDManager>();
+        if (hud != null) hud.ShowToast("SLOWED!");
         
         // Hiệu ứng màu bùn đất lên nhân vật
         if (playerSprite != null) playerSprite.color = new Color(0.6f, 0.4f, 0.2f); 
@@ -328,8 +380,7 @@ public class PlayerController : MonoBehaviour
     {
         if (UnityEngine.InputSystem.Keyboard.current == null) return;
 
-        bool isBoosting = UnityEngine.InputSystem.Keyboard.current.upArrowKey.isPressed ||
-                          UnityEngine.InputSystem.Keyboard.current.wKey.isPressed;
+        bool isBoosting = UnityEngine.InputSystem.Keyboard.current[boostKey].isPressed;
 
         if (surfaceEffectors.Count > 0)
         {
@@ -440,7 +491,7 @@ public class PlayerController : MonoBehaviour
     {
         if (UnityEngine.InputSystem.Keyboard.current == null) return;
 
-        if (UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame && isGrounded)
+        if (UnityEngine.InputSystem.Keyboard.current[jumpKey].wasPressedThisFrame && isGrounded)
         {
             rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
             if (AudioManager.Instance != null) AudioManager.Instance.PlayJumpSound();
@@ -464,7 +515,8 @@ public class PlayerController : MonoBehaviour
         {
             if (effector != null) effector.speed = baseSpeed;
         }
-        if (UIManager.Instance != null) UIManager.Instance.ShowFloatingText("SPEED UP!", transform.position);
+        var hud = Object.FindAnyObjectByType<HUDManager>();
+        if (hud != null) hud.ShowToast("SPEED UP!");
         if (playerSprite != null) playerSprite.color = Color.cyan;
         
         yield return new WaitForSeconds(duration);
@@ -486,7 +538,8 @@ public class PlayerController : MonoBehaviour
     private System.Collections.IEnumerator InvincibilityCoroutine(float duration)
     {
         isInvincible = true;
-        if (UIManager.Instance != null) UIManager.Instance.ShowFloatingText("INVINCIBLE!", transform.position);
+        var hud = Object.FindAnyObjectByType<HUDManager>();
+        if (hud != null) hud.ShowToast("INVINCIBLE!");
         yield return new WaitForSeconds(duration);
         isInvincible = false;
         if (playerSprite != null) playerSprite.enabled = true;

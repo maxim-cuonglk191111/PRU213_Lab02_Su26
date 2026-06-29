@@ -167,10 +167,13 @@ public class GameManager : MonoBehaviour
             Time.timeScale = 1f;
 
             // Remove any PvP remnants when loading solo level
-            foreach (var go in GameObject.FindGameObjectsWithTag("Player2"))
-                Destroy(go);
-            var strayP2 = GameObject.Find("Player2");
-            if (strayP2 != null) Destroy(strayP2);
+            foreach (var pc in Object.FindObjectsByType<PlayerController>(FindObjectsInactive.Include))
+            {
+                if (pc.gameObject.name.Contains("Player2") || pc.gameObject.CompareTag("Player2"))
+                {
+                    Destroy(pc.gameObject);
+                }
+            }
             var pvpGM = FindAnyObjectByType<PvPGameManager>();
             if (pvpGM != null) Destroy(pvpGM.gameObject);
             var cam2 = GameObject.Find("Camera2");
@@ -280,19 +283,17 @@ public class GameManager : MonoBehaviour
         Lives = 0;
         State = GameState.GameOver;
 
-        if (ScoreManager.Instance != null)
+        var sms2 = Object.FindObjectsByType<ScoreManager>(FindObjectsInactive.Include);
+        if (sms2.Length > 0)
         {
-            PlayerPrefs.SetInt("LastScore", ScoreManager.Instance.CurrentScore);
+            PlayerPrefs.SetInt("LastScore", sms2[0].CurrentScore);
             PlayerPrefs.SetInt("TotalRuns", PlayerPrefs.GetInt("TotalRuns", 0) + 1);
         }
         PlayerPrefs.SetFloat("LastTime", Time.timeSinceLevelLoad);
         if (playerRb != null) PlayerPrefs.SetInt("LastDistance", Mathf.Max(0, Mathf.RoundToInt(playerRb.position.x - startXPos)));
         PlayerPrefs.Save();
 
-        if (UIManager.Instance != null)
-            UIManager.Instance.ShowGameOverPanel();
-        else
-            LoadSceneWithFade("ScoreSummary");
+        LoadSceneWithFade(endScreenScene);
     }
 
     public void LevelComplete(bool playSFX = true)
@@ -303,19 +304,17 @@ public class GameManager : MonoBehaviour
         if (playSFX && AudioManager.Instance != null)
             AudioManager.Instance.PlayFinishSound();
 
-        if (ScoreManager.Instance != null)
+        var sms2 = Object.FindObjectsByType<ScoreManager>(FindObjectsInactive.Include);
+        if (sms2.Length > 0)
         {
-            PlayerPrefs.SetInt("LastScore", ScoreManager.Instance.CurrentScore);
+            PlayerPrefs.SetInt("LastScore", sms2[0].CurrentScore);
             PlayerPrefs.SetInt("TotalRuns", PlayerPrefs.GetInt("TotalRuns", 0) + 1);
         }
         PlayerPrefs.SetFloat("LastTime", Time.timeSinceLevelLoad);
         if (playerRb != null) PlayerPrefs.SetInt("LastDistance", Mathf.Max(0, Mathf.RoundToInt(playerRb.position.x - startXPos)));
         PlayerPrefs.Save();
 
-        if (UIManager.Instance != null)
-            UIManager.Instance.ShowLevelCompletePanel();
-        else
-            LoadSceneWithFade("ScoreSummary");
+        LoadSceneWithFade(endScreenScene);
     }
 
     public void TogglePause()
@@ -324,19 +323,15 @@ public class GameManager : MonoBehaviour
         {
             State = GameState.Paused;
             Time.timeScale = 0f;
-            if (UIManager.Instance != null)
-                UIManager.Instance.ShowPauseMenu();
-            else
-                GameObject.Find("PausePanel")?.SetActive(true);
+            var pausePanel = GameObject.Find("Canvas_Pause")?.transform.Find("PausePanel")?.gameObject;
+            if (pausePanel != null) pausePanel.SetActive(true);
         }
         else if (State == GameState.Paused)
         {
             State = GameState.Playing;
             Time.timeScale = 1f;
-            if (UIManager.Instance != null)
-                UIManager.Instance.HidePauseMenu();
-            else
-                GameObject.Find("PausePanel")?.SetActive(false);
+            var pausePanel = GameObject.Find("Canvas_Pause")?.transform.Find("PausePanel")?.gameObject;
+            if (pausePanel != null) pausePanel.SetActive(false);
         }
     }
 
@@ -344,8 +339,10 @@ public class GameManager : MonoBehaviour
     {
         Lives = startingLives;
         Time.timeScale = 1f;
-        if (ScoreManager.Instance != null) ScoreManager.Instance.ResetScore();
-        if (TrickManager.Instance != null) TrickManager.Instance.ResetAll();
+        var sms = Object.FindObjectsByType<ScoreManager>(FindObjectsInactive.Include);
+        foreach(var sm in sms) sm.ResetScore();
+        var tms = Object.FindObjectsByType<TrickManager>(FindObjectsInactive.Include);
+        foreach (var tm in tms) tm.ResetAll();
         LoadSceneWithFade(!string.IsNullOrEmpty(level1Scene) ? level1Scene : "Level1");
     }
 
@@ -353,8 +350,10 @@ public class GameManager : MonoBehaviour
     {
         Lives = startingLives;
         Time.timeScale = 1f;
-        if (ScoreManager.Instance != null) ScoreManager.Instance.ResetScore();
-        if (TrickManager.Instance != null) TrickManager.Instance.ResetAll();
+        var sms = Object.FindObjectsByType<ScoreManager>(FindObjectsInactive.Include);
+        foreach(var sm in sms) sm.ResetScore();
+        var tms = Object.FindObjectsByType<TrickManager>(FindObjectsInactive.Include);
+        foreach (var tm in tms) tm.ResetAll();
         LoadSceneWithFade(SceneManager.GetActiveScene().buildIndex);
     }
 

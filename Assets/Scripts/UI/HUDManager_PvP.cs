@@ -22,6 +22,9 @@ public class HUDManager_PvP : MonoBehaviour
     [SerializeField] private TextMeshProUGUI p1SpeedText;
     [SerializeField] private TextMeshProUGUI p1MultiplierText;
     [SerializeField] private Image[]         p1HeartIcons;
+    [SerializeField] private TextMeshProUGUI p1ToastText;
+
+    private Coroutine _p1ToastCoroutine;
 
     [Header("Player 2 HUD Panel")]
     [SerializeField] private Image           p2BorderPanel;
@@ -32,6 +35,9 @@ public class HUDManager_PvP : MonoBehaviour
     [SerializeField] private TextMeshProUGUI p2SpeedText;
     [SerializeField] private TextMeshProUGUI p2MultiplierText;
     [SerializeField] private Image[]         p2HeartIcons;
+    [SerializeField] private TextMeshProUGUI p2ToastText;
+
+    private Coroutine _p2ToastCoroutine;
 
     // ── Lifecycle ──────────────────────────────────────────────
     private void Awake()
@@ -39,6 +45,9 @@ public class HUDManager_PvP : MonoBehaviour
         // Apply border colors (PRD A9)
         if (p1BorderPanel != null) p1BorderPanel.color = P1BorderColor;
         if (p2BorderPanel != null) p2BorderPanel.color = P2BorderColor;
+
+        if (p1ToastText != null) p1ToastText.gameObject.SetActive(false);
+        if (p2ToastText != null) p2ToastText.gameObject.SetActive(false);
     }
 
     private void OnEnable()
@@ -92,5 +101,45 @@ public class HUDManager_PvP : MonoBehaviour
         if (icons == null) return;
         for (int i = 0; i < icons.Length; i++)
             if (icons[i] != null) icons[i].enabled = i < lives;
+    }
+
+    // ── Toasts ─────────────────────────────────────────────────
+    public void ShowP1Toast(string message)
+    {
+        if (p1ToastText == null) return;
+        if (_p1ToastCoroutine != null) StopCoroutine(_p1ToastCoroutine);
+        _p1ToastCoroutine = StartCoroutine(ToastRoutine(p1ToastText, message, () => _p1ToastCoroutine = null));
+    }
+
+    public void ShowP2Toast(string message)
+    {
+        if (p2ToastText == null) return;
+        if (_p2ToastCoroutine != null) StopCoroutine(_p2ToastCoroutine);
+        _p2ToastCoroutine = StartCoroutine(ToastRoutine(p2ToastText, message, () => _p2ToastCoroutine = null));
+    }
+
+    private System.Collections.IEnumerator ToastRoutine(TextMeshProUGUI tmp, string msg, System.Action onComplete)
+    {
+        tmp.text = msg;
+        tmp.alpha = 0f;
+        tmp.gameObject.SetActive(true);
+
+        for (float t = 0f; t < 0.2f; t += Time.deltaTime)
+        {
+            tmp.alpha = Mathf.Clamp01(t / 0.2f);
+            yield return null;
+        }
+        tmp.alpha = 1f;
+
+        yield return new WaitForSeconds(1.5f);
+
+        for (float t = 0f; t < 0.2f; t += Time.deltaTime)
+        {
+            tmp.alpha = Mathf.Clamp01(1f - t / 0.2f);
+            yield return null;
+        }
+
+        tmp.gameObject.SetActive(false);
+        onComplete?.Invoke();
     }
 }

@@ -80,7 +80,15 @@ public class PvPGameManager : MonoBehaviour
         FreezePlayer(player2);
 
         yield return new WaitForSeconds(0.5f);
-        SceneManager.LoadScene("PvPSummary");
+        
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.LoadSceneWithFade("PvPSummary");
+        }
+        else
+        {
+            SceneManager.LoadScene("PvPSummary");
+        }
     }
 
     private static void FreezePlayer(GameObject player)
@@ -94,13 +102,15 @@ public class PvPGameManager : MonoBehaviour
     {
         _paused = true;
         Time.timeScale = 0f;
-        GameObject.Find("PausePanel")?.SetActive(true);
+        var pausePanel = GameObject.Find("Canvas_Pause")?.transform.Find("PausePanel")?.gameObject;
+        if (pausePanel != null) pausePanel.SetActive(true);
     }
 
     public void ResumeGame()
     {
         _paused = false;
         Time.timeScale = 1f;
-        GameObject.Find("PausePanel")?.SetActive(false);
+        var pausePanel = GameObject.Find("Canvas_Pause")?.transform.Find("PausePanel")?.gameObject;
+        if (pausePanel != null) pausePanel.SetActive(false);
     }
 }

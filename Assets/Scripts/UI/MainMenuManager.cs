@@ -31,7 +31,11 @@ public class MainMenuManager : MonoBehaviour
         if (guidePanel      == null) guidePanel      = GameObject.Find("GuidePanel");
         if (optionsPanel    == null) optionsPanel    = GameObject.Find("OptionsPanel");
 
-        if (startButton     != null) startButton.onClick.AddListener(() => SceneManager.LoadScene("ModeSelect"));
+        if (startButton != null) startButton.onClick.AddListener(() => 
+        {
+            if (GameManager.Instance != null) GameManager.Instance.LoadSceneWithFade("ModeSelect");
+            else SceneManager.LoadScene("ModeSelect");
+        });
         if (howToPlayButton != null) howToPlayButton.onClick.AddListener(ToggleGuide);
         if (optionsButton   != null) optionsButton.onClick.AddListener(() => {
             if (optionsPanel != null) optionsPanel.SetActive(!optionsPanel.activeSelf);

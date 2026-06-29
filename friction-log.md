@@ -19,3 +19,6 @@
 - **PlayerController had no InputConfig assigned — player never moves**: `SnowBoarderSetup_Part3.WirePlayerComponents()` never called `SetRef(so, "inputConfig", cfg)`. Must explicitly load `InputConfig_P1.asset` / `InputConfig_P2.asset` and assign via `SerializedObject` for each player.
 - **No CameraFollow script existed anywhere**: Camera stayed at (0,0,-10) and never tracked the player. Created `CameraFollow.cs` and wired it to MainCamera in both Level1 and Level1_PvP via Part3 setup.
 - **Summary screens (ScoreSummary, PvPSummary) had no self-heal fallback**: If Inspector refs were null (broken links), buttons silently did nothing. Added `FindBtn()`/`FindTMP()` fallbacks and runtime `EnsureEventSystem()` guards.
+Migrating legacy codebase to multiplayer required stripping Singleton patterns from TrickManager and ScoreManager because they would self-destruct or detach the second player's instances.
+Audited UI/UX reference and adapted single-player layout constraints to modular managers (MainMenu, ModeSelect, HUD, PvP_HUD), adding distinct Toast notifications for dual-player view.
+Enhanced UI text readability by injecting native TextMeshPro outline styling into Setup scripts and adding a universal UIOptimizerEditor tool.

@@ -13,8 +13,14 @@ public class CameraFollow : MonoBehaviour
     {
         if (player == null)
         {
-            GameObject go = GameObject.FindGameObjectWithTag("Player");
+            GameObject go = GameObject.FindGameObjectWithTag(gameObject.name.Contains("2") ? "Player2" : "Player");
             if (go != null) player = go.transform;
+        }
+
+        Camera cam = GetComponent<Camera>();
+        if (cam != null && cam.orthographic)
+        {
+            cam.orthographicSize = 10f;
         }
     }
 
@@ -24,6 +30,14 @@ public class CameraFollow : MonoBehaviour
         {
             Vector3 desiredPosition = player.position + offset;
             transform.position = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed * Time.deltaTime);
+        }
+    }
+
+    public void SnapToPlayer()
+    {
+        if (player != null)
+        {
+            transform.position = player.position + offset;
         }
     }
 }

@@ -8,7 +8,6 @@ public class PowerUp : MonoBehaviour
     [Header("Settings")]
     [SerializeField] private PowerUpType type           = PowerUpType.SpeedBoost;
     [SerializeField] private float       duration        = 5f;
-    [SerializeField] private float       speedMultiplier = 1.5f;
 
     private void OnTriggerEnter2D(Collider2D other)
     {

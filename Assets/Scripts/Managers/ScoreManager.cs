@@ -5,7 +5,6 @@ using System;
 
 public class ScoreManager : MonoBehaviour
 {
-    public static ScoreManager Instance { get; private set; }
 
     public int CurrentScore { get; private set; }
     public Action<int> OnScoreUpdated;
@@ -35,19 +34,7 @@ public class ScoreManager : MonoBehaviour
     // HUDManager reads this for the multiplier display
     public int CurrentMultiplier => currentCombo;
 
-    void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-            transform.SetParent(null);
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
+
 
     void Start()
     {
@@ -111,11 +98,6 @@ public class ScoreManager : MonoBehaviour
         currentCombo = Mathf.Min(currentCombo + 1, maxCombo);
         comboTimer = maxComboTimer;
         FireScoreEvent();
-
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.ShowFloatingText($"x{currentCombo} COMBO!", Vector3.zero);
-        }
     }
 
     public void AddTrickScore(int basePoints, int multiplier)
@@ -126,11 +108,6 @@ public class ScoreManager : MonoBehaviour
         comboTimer = maxComboTimer;
 
         FireScoreEvent();
-
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.ShowFloatingText($"x{currentCombo} COMBO!", Vector3.zero);
-        }
     }
 
     public void ResetScore()

@@ -3,8 +3,6 @@ using UnityEngine.InputSystem;
 
 public class TrickManager : MonoBehaviour
 {
-    public static TrickManager Instance { get; private set; }
-
     [Header("Key Bindings")]
     public Key jumpKey = Key.Space;
     public Key indyGrabKey = Key.Q;
@@ -30,11 +28,7 @@ public class TrickManager : MonoBehaviour
     float grabTimer = 0f;
     int flipCount = 0;
 
-    void Awake()
-    {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
-    }
+
 
     void Start()
     {
@@ -96,8 +90,8 @@ public class TrickManager : MonoBehaviour
                     int grabPoints = 150 * multiplier;
                     pendingScore += grabPoints;
 
-                    if (UIManager.Instance != null)
-                        UIManager.Instance.ShowFloatingText($"{grabName}! +{grabPoints} (Pending)", transform.position);
+                    if (playerController != null)
+                        playerController.ShowToast($"{grabName}! +{grabPoints} (Pending)");
 
                     if (AudioManager.Instance != null)
                         AudioManager.Instance.PlayTrickSuccessSound();
@@ -138,8 +132,8 @@ public class TrickManager : MonoBehaviour
                     else if (flipCount == 3) flipText = isBackflip ? "TRIPLE BACKFLIP!" : "TRIPLE FRONTFLIP!";
                     else flipText = $"{flipCount}x {(isBackflip ? "BACKFLIP!" : "FRONTFLIP!")}";
 
-                    if (UIManager.Instance != null)
-                        UIManager.Instance.ShowFloatingText($"{flipText} x{multiplier} (Pending)", transform.position);
+                    if (playerController != null)
+                        playerController.ShowToast($"{flipText} x{multiplier} (Pending)");
 
                     if (AudioManager.Instance != null)
                         AudioManager.Instance.PlayTrickSuccessSound();
@@ -160,11 +154,12 @@ public class TrickManager : MonoBehaviour
             {
                 if (pendingScore > 0)
                 {
-                    if (ScoreManager.Instance != null)
-                        ScoreManager.Instance.AddTrickScore(pendingScore, 1);
+                    var sm = GetComponent<ScoreManager>();
+                    if (sm != null)
+                        sm.AddTrickScore(pendingScore, 1);
 
-                    if (UIManager.Instance != null)
-                        UIManager.Instance.ShowFloatingText($"+{pendingScore} LANDED!", transform.position);
+                    if (playerController != null)
+                        playerController.ShowToast($"+{pendingScore} LANDED!");
 
                     if (AudioManager.Instance != null)
                         AudioManager.Instance.PlayTrickSuccessSound();
@@ -176,14 +171,25 @@ public class TrickManager : MonoBehaviour
                 float playerAngle = transform.rotation.eulerAngles.z;
                 float angleDiff = Mathf.Abs(Mathf.DeltaAngle(playerAngle, groundAngle));
 
-                if (angleDiff <= 15f)
+                if (angleDiff > playerController.crashRotationThreshold)
+                {
+                    var crashHandler = GetComponent<CrashHandler>();
+                    if (crashHandler != null)
+                    {
+                        crashHandler.ForceCrash();
+                        if (playerController != null) playerController.ShowToast("BAD LANDING!");
+                    }
+                    pendingScore = 0;
+                }
+                else if (angleDiff <= 15f)
                 {
                     int perfectLandingBonus = 200;
-                    if (ScoreManager.Instance != null)
-                        ScoreManager.Instance.AddTrickScore(perfectLandingBonus, 1);
+                    var sm = GetComponent<ScoreManager>();
+                    if (sm != null)
+                        sm.AddTrickScore(perfectLandingBonus, 1);
 
-                    if (UIManager.Instance != null)
-                        UIManager.Instance.ShowFloatingText("PERFECT LANDING! +200", transform.position + Vector3.up * 1.5f);
+                    if (playerController != null)
+                        playerController.ShowToast("PERFECT LANDING! +200");
 
                     if (AudioManager.Instance != null)
                         AudioManager.Instance.PlayTrickSuccessSound();
@@ -192,11 +198,12 @@ public class TrickManager : MonoBehaviour
                 if (airTime > 1.5f)
                 {
                     int bigAirBonus = Mathf.RoundToInt((airTime - 1.0f) * 250f);
-                    if (ScoreManager.Instance != null)
-                        ScoreManager.Instance.AddTrickScore(bigAirBonus, 1);
+                    var sm = GetComponent<ScoreManager>();
+                    if (sm != null)
+                        sm.AddTrickScore(bigAirBonus, 1);
 
-                    if (UIManager.Instance != null)
-                        UIManager.Instance.ShowFloatingText($"BIG AIR! +{bigAirBonus}", transform.position + Vector3.up * 3f);
+                    if (playerController != null)
+                        playerController.ShowToast($"BIG AIR! +{bigAirBonus}");
                 }
 
                 if (airTime > 0.5f)

@@ -42,7 +42,31 @@ public static class SnowBoarderSetup_Part3
         SetPlayerPrefabTag("Player1", "Player");
         SetPlayerPrefabTag("Player2", "Player2");
 
+        var guids = AssetDatabase.FindAssets("t:Prefab", new[] { PREFABS });
+        foreach (var guid in guids)
+        {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            CleanPrefab(path);
+        }
+
         Debug.Log("[Part3] Prefabs pre-wired.");
+    }
+
+    static void CleanPrefab(string path)
+    {
+        var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        if (go != null)
+        {
+            bool cleaned = false;
+            foreach (var child in go.GetComponentsInChildren<Transform>(true))
+            {
+                if (GameObjectUtility.RemoveMonoBehavioursWithMissingScript(child.gameObject) > 0)
+                {
+                    cleaned = true;
+                }
+            }
+            if (cleaned) EditorUtility.SetDirty(go);
+        }
     }
 
     static void SetPlayerPrefabTag(string prefabName, string tag)
@@ -77,6 +101,7 @@ public static class SnowBoarderSetup_Part3
             so.ApplyModifiedProperties();
         }
 
+        CleanMissingScripts();
         EditorSceneManager.SaveScene(scene);
         Debug.Log("[Part3] MainMenu wired.");
     }
@@ -96,6 +121,7 @@ public static class SnowBoarderSetup_Part3
             so.ApplyModifiedProperties();
         }
 
+        CleanMissingScripts();
         EditorSceneManager.SaveScene(scene);
         Debug.Log("[Part3] ModeSelect wired.");
     }
@@ -118,6 +144,7 @@ public static class SnowBoarderSetup_Part3
             so.ApplyModifiedProperties();
         }
 
+        CleanMissingScripts();
         EditorSceneManager.SaveScene(scene);
         Debug.Log("[Part3] ScoreSummary wired.");
     }
@@ -139,6 +166,7 @@ public static class SnowBoarderSetup_Part3
             so.ApplyModifiedProperties();
         }
 
+        CleanMissingScripts();
         EditorSceneManager.SaveScene(scene);
         Debug.Log("[Part3] PvPSummary wired.");
     }
@@ -197,13 +225,12 @@ public static class SnowBoarderSetup_Part3
             flAS.playOnAwake = false;
             var flSO = new SerializedObject(fl);
             flSO.FindProperty("isPvP").boolValue = true;
-            SetRef(flSO, "audioSource", flAS);
-            SetRef(flSO, "finishClip",  finishClip);
+            SetRef(flSO, "finishSound",  finishClip);
             flSO.ApplyModifiedProperties();
         }
 
         // PvP uses manual split-screen cameras — disable Cinemachine to prevent conflicts
-        foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
         {
             if (mb == null) continue;
             var tn = mb.GetType().FullName;
@@ -220,10 +247,10 @@ public static class SnowBoarderSetup_Part3
         {
             var camGO = GameObject.Find(camName);
             if (camGO == null) return;
-            var cf   = camGO.GetComponent<CameraFollow>() ?? camGO.AddComponent<CameraFollow>();
+            var cf   = camGO.GetComponent<CameraFollow>();
+            if (cf == null) cf = camGO.AddComponent<CameraFollow>();
             var cfSO = new SerializedObject(cf);
-            SetRef(cfSO, "target", playerTarget.transform);
-            cfSO.FindProperty("playerTag").stringValue = pTag;
+            SetRef(cfSO, "player", playerTarget.transform);
             cfSO.ApplyModifiedProperties();
 
             Vector3 off     = new Vector3(0f, 2f, -10f);
@@ -246,6 +273,7 @@ public static class SnowBoarderSetup_Part3
         EnsureTerrainTag();
         BuildPausePanel();
 
+        CleanMissingScripts();
         EditorSceneManager.SaveScene(scene);
         Debug.Log("[Part3] Level1_PvP wired.");
     }
@@ -264,10 +292,13 @@ public static class SnowBoarderSetup_Part3
         EnsureComponent<GameManager>("GameManager");
         EnsureEventSystem();
 
-        foreach (var go in GameObject.FindGameObjectsWithTag("Player2"))
-            Object.DestroyImmediate(go);
-        var strayP2 = GameObject.Find("Player2");
-        if (strayP2 != null) Object.DestroyImmediate(strayP2);
+        foreach (var pc in Object.FindObjectsByType<PlayerController>(FindObjectsInactive.Include))
+        {
+            if (pc.gameObject.name.Contains("Player2") || pc.gameObject.CompareTag("Player2"))
+            {
+                Object.DestroyImmediate(pc.gameObject);
+            }
+        }
         var strayPvP = Object.FindAnyObjectByType<PvPGameManager>();
         if (strayPvP != null) Object.DestroyImmediate(strayPvP.gameObject);
         foreach (var name in new[] { "Camera2", "Canvas_Divider", "Canvas_HUD_P1", "Canvas_HUD_P2", "HUDManager_PvP", "SpawnPoint_P1", "SpawnPoint_P2" })
@@ -282,7 +313,7 @@ public static class SnowBoarderSetup_Part3
             mainCamSolo.clearFlags  = CameraClearFlags.SolidColor;
             mainCamSolo.backgroundColor = new Color(0.52f, 0.80f, 0.98f, 1f);
             mainCamSolo.orthographic = true;
-            mainCamSolo.orthographicSize = 5f;
+            mainCamSolo.orthographicSize = 10f;
         }
 
         // Find or adopt the existing player first, then anchor respawn above it
@@ -305,23 +336,31 @@ public static class SnowBoarderSetup_Part3
         flAS.playOnAwake = false;
         var flSO = new SerializedObject(fl);
         flSO.FindProperty("isPvP").boolValue = false;
-        SetRef(flSO, "audioSource", flAS);
-        SetRef(flSO, "finishClip",  finishClip);
+        SetRef(flSO, "finishSound",  finishClip);
         flSO.ApplyModifiedProperties();
 
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
 
-        // Solo: remove stale CameraFollow from cameras (Cinemachine already follows the player)
-        foreach (var cam in Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        // Wire CameraFollow for the Main Camera
+        if (mainCamSolo != null)
         {
-            var stale = cam.GetComponent<CameraFollow>();
-            if (stale != null) Object.DestroyImmediate(stale);
+            var cf = mainCamSolo.GetComponent<CameraFollow>();
+            if (cf == null) cf = mainCamSolo.gameObject.AddComponent<CameraFollow>();
+            var cfSO = new SerializedObject(cf);
+            SetRef(cfSO, "player", p1GO.transform);
+            cfSO.ApplyModifiedProperties();
+            
+            Vector3 off = new Vector3(0f, 2f, -10f);
+            Vector3 snapPos = p1GO.transform.position + off;
+            snapPos.z = off.z;
+            mainCamSolo.transform.position = snapPos;
         }
 
         EnsureTerrainTag();
         BuildPausePanel();
 
+        CleanMissingScripts();
         EditorSceneManager.SaveScene(scene);
         Debug.Log("[Part3] Level1 (Solo) wired.");
     }
@@ -539,7 +578,7 @@ public static class SnowBoarderSetup_Part3
 
         // Adopt the first Rigidbody2D with the correct tag (e.g. the original "Barry" tagged "Player")
         string tag = (name == "Player2") ? "Player2" : "Player";
-        foreach (var rb in Object.FindObjectsByType<Rigidbody2D>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var rb in Object.FindObjectsByType<Rigidbody2D>(FindObjectsInactive.Include))
         {
             if (!rb.gameObject.CompareTag(tag)) continue;
             if (name == "Player1" && rb.gameObject.name == "Player2") continue;
@@ -577,6 +616,9 @@ public static class SnowBoarderSetup_Part3
         tmp.fontSize  = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.outlineWidth = 0.2f;
+        tmp.outlineColor = new Color32(0, 0, 0, 255);
         var rt = go.GetComponent<RectTransform>();
         rt.anchoredPosition = pos;
         rt.sizeDelta        = size;
@@ -586,7 +628,8 @@ public static class SnowBoarderSetup_Part3
     static void BuildPausePanel()
     {
         var cvGO = EnsureGO("Canvas_Pause");
-        var cv   = cvGO.GetComponent<Canvas>() ?? cvGO.AddComponent<Canvas>();
+        var cv   = cvGO.GetComponent<Canvas>();
+        if (cv == null) cv = cvGO.AddComponent<Canvas>();
         cv.renderMode   = RenderMode.ScreenSpaceOverlay;
         cv.sortingOrder = 100;
         if (!cvGO.GetComponent<CanvasScaler>())
@@ -603,7 +646,8 @@ public static class SnowBoarderSetup_Part3
         var panelGO = panelTr != null ? panelTr.gameObject : new GameObject("PausePanel", typeof(RectTransform));
         panelGO.transform.SetParent(cvTr, false);
 
-        var panelImg = panelGO.GetComponent<Image>() ?? panelGO.AddComponent<Image>();
+        var panelImg = panelGO.GetComponent<Image>();
+        if (panelImg == null) panelImg = panelGO.AddComponent<Image>();
         panelImg.color = new Color(0f, 0f, 0f, 0.7f);
         var panelRT = panelGO.GetComponent<RectTransform>();
         panelRT.anchorMin = Vector2.zero;
@@ -618,7 +662,8 @@ public static class SnowBoarderSetup_Part3
         var resumeBtn   = EnsureButton(panelGO.transform, "Resume_Btn",   "Resume",    new Vector2(0,  20));
         var mainMenuBtn = EnsureButton(panelGO.transform, "MainMenu_Btn", "Main Menu", new Vector2(0, -80));
 
-        var ppUI = panelGO.GetComponent<PausePanelUI>() ?? panelGO.AddComponent<PausePanelUI>();
+        var ppUI = panelGO.GetComponent<PausePanelUI>();
+        if (ppUI == null) ppUI = panelGO.AddComponent<PausePanelUI>();
         if (resumeBtn.onClick.GetPersistentEventCount() == 0)
             UnityEventTools.AddPersistentListener(resumeBtn.onClick,   ppUI.Resume);
         if (mainMenuBtn.onClick.GetPersistentEventCount() == 0)
@@ -648,6 +693,9 @@ public static class SnowBoarderSetup_Part3
         tmp.fontSize  = 28;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.outlineWidth = 0.15f;
+        tmp.outlineColor = new Color32(0, 0, 0, 255);
         var lrt = labelGO.GetComponent<RectTransform>();
         lrt.anchorMin = Vector2.zero;
         lrt.anchorMax = Vector2.one;
@@ -661,8 +709,10 @@ public static class SnowBoarderSetup_Part3
     static void EnsureTerrainTag()
     {
         EnsureTagExists("Ground");
+        EnsureTagExists("SlowDown");
+        EnsureTagExists("Penalty");
         // SpriteShape terrain: find any object with EdgeCollider2D or SurfaceEffector2D on it
-        foreach (var col in Object.FindObjectsByType<Collider2D>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var col in Object.FindObjectsByType<Collider2D>(FindObjectsInactive.Include))
         {
             var go = col.gameObject;
             if (go.tag == "Ground") continue;
@@ -691,12 +741,21 @@ public static class SnowBoarderSetup_Part3
         so.ApplyModifiedProperties();
     }
 
+    static void CleanMissingScripts()
+    {
+        var allGOs = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include);
+        foreach (var go in allGOs)
+        {
+            GameObjectUtility.RemoveMonoBehavioursWithMissingScript(go);
+        }
+    }
+
     static void ApplySharedCamSettings(Camera cam, int depth, Rect rect)
     {
         cam.clearFlags       = CameraClearFlags.SolidColor;
         cam.backgroundColor  = new Color(0.52f, 0.80f, 0.98f, 1f);
         cam.orthographic     = true;
-        cam.orthographicSize = 5f;
+        cam.orthographicSize = 10f;
         cam.depth            = depth;
         cam.rect             = rect;
     }

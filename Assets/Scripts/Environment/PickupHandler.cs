@@ -16,7 +16,11 @@ public class PickupHandler : MonoBehaviour
         _collected = true;
 
         var sm = other.GetComponentInParent<ScoreManager>();
-        sm?.AddScore(scoreValue);
+        if (sm != null)
+        {
+            sm.AddScore(scoreValue);
+        }
+
 
         if (AudioManager.Instance != null && pickupClip != null)
             AudioManager.Instance.PlaySFX(pickupClip, 0.7f);
