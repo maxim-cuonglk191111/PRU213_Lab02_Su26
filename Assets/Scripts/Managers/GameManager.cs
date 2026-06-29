@@ -28,7 +28,22 @@ public class GameManager : MonoBehaviour
             State = GameState.Playing;
             Time.timeScale = 1f;
             SetPausePanel(false);
+            PurgePvPRemnants();
         }
+    }
+
+    private static void PurgePvPRemnants()
+    {
+        foreach (var go in GameObject.FindGameObjectsWithTag("Player2"))
+            Destroy(go);
+        var strayP2 = GameObject.Find("Player2");
+        if (strayP2 != null) Destroy(strayP2);
+        var pvpGM = FindAnyObjectByType<PvPGameManager>();
+        if (pvpGM != null) Destroy(pvpGM.gameObject);
+        var cam2 = GameObject.Find("Camera2");
+        if (cam2 != null) Destroy(cam2);
+        var divider = GameObject.Find("Canvas_Divider");
+        if (divider != null) Destroy(divider);
     }
 
     private void Start()

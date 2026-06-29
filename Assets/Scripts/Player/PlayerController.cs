@@ -7,9 +7,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private InputConfig inputConfig;
 
     [Header("Physics")]
-    [SerializeField] private float rotationSpeed   = 400f;
+    [SerializeField] private float rotationSpeed   = 250f;
     [SerializeField] private float thrustForce     = 12f;
-    [SerializeField] private float maxAngularSpeed = 400f;
+    [SerializeField] private float maxAngularSpeed = 150f;
     [SerializeField] private float maxSpeed        = 25f;
 
     private Rigidbody2D _rb;

@@ -14,7 +14,8 @@ public class CrashHandler : MonoBehaviour
     [SerializeField] private float invincibilityDuration = 1.5f;
 
     [Header("Upside-Down Detection")]
-    [SerializeField] private float flipDeathAngle = 100f;
+    [SerializeField] private float flipDeathAngle = 130f;
+    [SerializeField] private float flipDeathDelay = 0.5f;
 
     [Header("Out-of-Bounds")]
     [SerializeField] private float killBelowY = -20f;
@@ -27,6 +28,7 @@ public class CrashHandler : MonoBehaviour
     private PlayerController _controller;
     private SpriteRenderer[] _sprites;
     private Coroutine        _flashCoroutine;
+    private float            _flipTimer;
 
     private void Awake()
     {
@@ -41,7 +43,7 @@ public class CrashHandler : MonoBehaviour
 
     private void Update()
     {
-        if (IsInvincible) return;
+        if (IsInvincible) { _flipTimer = 0f; return; }
 
         Transform root = transform.root;
 
@@ -51,9 +53,18 @@ public class CrashHandler : MonoBehaviour
             return;
         }
 
-        float angle = root.eulerAngles.z;
-        if (angle > flipDeathAngle && angle < 360f - flipDeathAngle)
-            HandleCrash();
+        float angle    = root.eulerAngles.z;
+        bool  inverted = angle > flipDeathAngle && angle < 360f - flipDeathAngle;
+
+        if (inverted)
+        {
+            _flipTimer += Time.deltaTime;
+            if (_flipTimer >= flipDeathDelay) HandleCrash();
+        }
+        else
+        {
+            _flipTimer = 0f;
+        }
     }
 
     private void OnCollisionEnter2D(Collision2D col)
@@ -65,6 +76,7 @@ public class CrashHandler : MonoBehaviour
 
     private void HandleCrash()
     {
+        _flipTimer         = 0f;
         _respawnInvincible = true;
         UpdateFlash();
 
@@ -92,10 +104,9 @@ public class CrashHandler : MonoBehaviour
 
         Transform root = transform.root;
         if (respawnPoint != null)
-            root.position = respawnPoint.position;
+            root.SetPositionAndRotation(respawnPoint.position, Quaternion.identity);
         else
-            root.position = Vector3.zero;
-        root.rotation = Quaternion.identity;
+            root.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
 
         yield return new WaitForSeconds(0.1f);
         _controller?.SetInputEnabled(true);

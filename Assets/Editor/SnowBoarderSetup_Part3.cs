@@ -4,6 +4,7 @@ using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using UnityEngine.Tilemaps;
 using TMPro;
 
 public static class SnowBoarderSetup_Part3
@@ -224,6 +225,7 @@ public static class SnowBoarderSetup_Part3
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
 
+        EnsureTerrainCollision();
         BuildPausePanel();
 
         EditorSceneManager.SaveScene(scene);
@@ -288,6 +290,8 @@ public static class SnowBoarderSetup_Part3
 
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
+
+        EnsureTerrainCollision();
 
         var mainCam = Object.FindAnyObjectByType<Camera>();
         if (mainCam != null)
@@ -644,6 +648,34 @@ public static class SnowBoarderSetup_Part3
         lrt.offsetMax = Vector2.zero;
 
         return btn;
+    }
+
+    static void EnsureTerrainCollision()
+    {
+        var tilemaps = Object.FindObjectsByType<Tilemap>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var tm in tilemaps)
+        {
+            var go = tm.gameObject;
+
+            var rb = go.GetComponent<Rigidbody2D>();
+            if (rb == null) rb = go.AddComponent<Rigidbody2D>();
+            rb.bodyType = RigidbodyType2D.Static;
+
+            var tc = go.GetComponent<TilemapCollider2D>();
+            if (tc == null) tc = go.AddComponent<TilemapCollider2D>();
+
+            var cc = go.GetComponent<CompositeCollider2D>();
+            if (cc == null) cc = go.AddComponent<CompositeCollider2D>();
+            cc.geometryType  = CompositeCollider2D.GeometryType.Polygons;
+            cc.generationType = CompositeCollider2D.GenerationType.Synchronous;
+
+            tc.usedByComposite = true;
+
+            Debug.Log($"[Part3] Terrain collision set up on {go.name}");
+        }
+
+        if (tilemaps.Length == 0)
+            Debug.LogWarning("[Part3] No Tilemap found in scene — add terrain tiles manually.");
     }
 
     static void ApplySharedCamSettings(Camera cam, int depth, Rect rect)
