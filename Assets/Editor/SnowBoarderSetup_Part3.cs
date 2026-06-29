@@ -1,11 +1,3 @@
-// Assets/Editor/SnowBoarderSetup_Part3.cs
-// Phase 3: instantiate player prefabs into scenes and wire ALL Inspector
-// cross-references that Phase 2 (scene skeleton) could not link without
-// live GameObject instances.
-//
-// Run order: Part 1 → Part 2 → Part 3
-// Or use: SnowBoarder > Setup > Run Full Setup  (calls all three in sequence)
-
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.Events;
@@ -31,7 +23,7 @@ public static class SnowBoarderSetup_Part3
         WireModeSelect();
         WireScoreSummary();
         WirePvPSummary();
-        WireLevel1PvP();   // PvP before Solo so Level1_PvP never inherits Solo's GameManager
+        WireLevel1PvP();
         WireLevel1Solo();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -39,9 +31,6 @@ public static class SnowBoarderSetup_Part3
         Debug.Log("=== [Part3] Scene wiring complete ===");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // PREFAB PRE-WIRING (audio clips, player tags)
-    // ─────────────────────────────────────────────────────────────
     static void WirePrefabs()
     {
         var pickupClip = LoadAudio("pickup.ogg");
@@ -70,9 +59,6 @@ public static class SnowBoarderSetup_Part3
         so.ApplyModifiedProperties();
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // MAIN MENU — AudioManager + button wiring
-    // ─────────────────────────────────────────────────────────────
     static void WireMainMenu()
     {
         if (!SceneExists("MainMenu")) return;
@@ -96,9 +82,6 @@ public static class SnowBoarderSetup_Part3
         Debug.Log("[Part3] MainMenu wired.");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // MODE SELECT — button wiring
-    // ─────────────────────────────────────────────────────────────
     static void WireModeSelect()
     {
         if (!SceneExists("ModeSelect")) return;
@@ -118,9 +101,6 @@ public static class SnowBoarderSetup_Part3
         Debug.Log("[Part3] ModeSelect wired.");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // SCORE SUMMARY (SOLO) — text + button wiring
-    // ─────────────────────────────────────────────────────────────
     static void WireScoreSummary()
     {
         if (!SceneExists("ScoreSummary")) return;
@@ -141,9 +121,6 @@ public static class SnowBoarderSetup_Part3
         Debug.Log("[Part3] ScoreSummary wired.");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // PVP SUMMARY — text + button wiring
-    // ─────────────────────────────────────────────────────────────
     static void WirePvPSummary()
     {
         if (!SceneExists("PvPSummary")) return;
@@ -153,11 +130,11 @@ public static class SnowBoarderSetup_Part3
         if (mgr != null)
         {
             var so = new SerializedObject(mgr);
-            SetRef(so, "winnerText",    FindTMP("Player_1_Wins!"));
-            SetRef(so, "p1ScoreText",   FindTMP("P1_Score:_0"));
-            SetRef(so, "p2ScoreText",   FindTMP("P2_Score:_0"));
-            SetRef(so, "rematchButton",   FindBtn("Rematch_Btn"));
-            SetRef(so, "mainMenuButton",  FindBtn("Main Menu_Btn"));
+            SetRef(so, "winnerText",     FindTMP("Player_1_Wins!"));
+            SetRef(so, "p1ScoreText",    FindTMP("P1_Score:_0"));
+            SetRef(so, "p2ScoreText",    FindTMP("P2_Score:_0"));
+            SetRef(so, "rematchButton",  FindBtn("Rematch_Btn"));
+            SetRef(so, "mainMenuButton", FindBtn("Main Menu_Btn"));
             so.ApplyModifiedProperties();
         }
 
@@ -165,9 +142,6 @@ public static class SnowBoarderSetup_Part3
         Debug.Log("[Part3] PvPSummary wired.");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // LEVEL1 PVP — players, managers, HUD, FinishLine
-    // ─────────────────────────────────────────────────────────────
     static void WireLevel1PvP()
     {
         if (!SceneExists("Level1_PvP")) return;
@@ -178,31 +152,24 @@ public static class SnowBoarderSetup_Part3
         var pickupClip = LoadAudio("pickup.ogg");
         var bgmClip    = LoadAudio("bgm_snow.ogg");
 
-        // Remove any stray Solo GameManager that may have carried over from Level1
         var strayGM = Object.FindAnyObjectByType<GameManager>();
         if (strayGM != null) Object.DestroyImmediate(strayGM.gameObject);
 
-        // AudioManager
         WireAudioManager(EnsureComponent<AudioManager>("AudioManager"), bgmClip);
-
-        // EventSystem
         EnsureEventSystem();
 
-        // Spawn points
         var sp1 = GameObject.Find("SpawnPoint_P1");
         if (sp1 == null) { sp1 = new GameObject("SpawnPoint_P1"); sp1.transform.position = new Vector3(-1f, 2f, 0f); }
-        
+
         var sp2 = GameObject.Find("SpawnPoint_P2");
         if (sp2 == null) { sp2 = new GameObject("SpawnPoint_P2"); sp2.transform.position = new Vector3(1f, 2f, 0f); }
 
-        // Player instances
         var p1GO = EnsurePlayerInScene("Player1", $"{PREFABS}/Player1.prefab", sp1.transform.position);
         var p2GO = EnsurePlayerInScene("Player2", $"{PREFABS}/Player2.prefab", sp2.transform.position);
 
         WirePlayerComponents(p1GO, sp1.transform, crashClip, "Player");
         WirePlayerComponents(p2GO, sp2.transform, crashClip, "Player2");
 
-        // PvPGameManager
         var pvp = Object.FindAnyObjectByType<PvPGameManager>();
         if (pvp == null) pvp = new GameObject("PvPGameManager").AddComponent<PvPGameManager>();
         var pvpSO = new SerializedObject(pvp);
@@ -214,11 +181,9 @@ public static class SnowBoarderSetup_Part3
         SetRef(pvpSO, "scoreManager2", p2GO.GetComponent<ScoreManager>());
         pvpSO.ApplyModifiedProperties();
 
-        // HUDManager_PvP
         var hudPvP = Object.FindAnyObjectByType<HUDManager_PvP>();
         if (hudPvP != null) WireHUDPvP(hudPvP, p1GO, p2GO);
 
-        // FinishLine audio
         var fl = Object.FindAnyObjectByType<FinishLine>();
         if (fl != null)
         {
@@ -232,29 +197,25 @@ public static class SnowBoarderSetup_Part3
             flSO.ApplyModifiedProperties();
         }
 
-        // ── CameraFollow: P1 camera follows P1, P2 camera follows P2 ──
-        // Also pre-positions the camera so it starts AT the player, not at world-origin.
         void WireCam(string camName, GameObject playerTarget)
         {
             var camGO = GameObject.Find(camName);
             if (camGO == null) return;
-            var cf = camGO.GetComponent<CameraFollow>() ?? camGO.AddComponent<CameraFollow>();
+            var cf   = camGO.GetComponent<CameraFollow>() ?? camGO.AddComponent<CameraFollow>();
             var cfSO = new SerializedObject(cf);
             SetRef(cfSO, "target", playerTarget.transform);
             cfSO.ApplyModifiedProperties();
 
-            // Pre-position in Editor so the camera's saved transform is already correct
             var offProp = cfSO.FindProperty("offset");
-            Vector3 off = offProp != null ? offProp.vector3Value : new Vector3(0f, 2f, -10f);
+            Vector3 off     = offProp != null ? offProp.vector3Value : new Vector3(0f, 2f, -10f);
             Vector3 snapPos = playerTarget.transform.position + off;
-            snapPos.z = off.z;  // camera Z depth from offset
+            snapPos.z = off.z;
             camGO.transform.position = snapPos;
         }
 
         WireCam("Main Camera", p1GO);
-        WireCam("Camera2", p2GO);
+        WireCam("Camera2",     p2GO);
 
-        // Camera2: must use SolidColor clear so the right viewport isn't black
         var cam2GO = GameObject.Find("Camera2");
         if (cam2GO != null)
         {
@@ -262,11 +223,10 @@ public static class SnowBoarderSetup_Part3
             if (cam2 != null)
             {
                 cam2.clearFlags      = CameraClearFlags.SolidColor;
-                cam2.backgroundColor = new Color(0.52f, 0.80f, 0.98f, 1f);  // sky blue
+                cam2.backgroundColor = new Color(0.52f, 0.80f, 0.98f, 1f);
             }
         }
 
-        // Snowflake pickups already in scene
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
 
@@ -276,9 +236,6 @@ public static class SnowBoarderSetup_Part3
         Debug.Log("[Part3] Level1_PvP wired.");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // LEVEL1 SOLO — all managers, HUD, FinishLine
-    // ─────────────────────────────────────────────────────────────
     static void WireLevel1Solo()
     {
         if (!SceneExists("Level1")) return;
@@ -293,29 +250,23 @@ public static class SnowBoarderSetup_Part3
         EnsureComponent<GameManager>("GameManager");
         EnsureEventSystem();
 
-        // Remove any Player2 that Part2 may have carried over from the Level1 base scene
         var strayP2 = GameObject.Find("Player2");
         if (strayP2 != null) { Object.DestroyImmediate(strayP2); Debug.Log("[Part3] Removed stray Player2 from Level1 solo scene."); }
 
-        // Respawn / spawn point
         var respawn = GameObject.Find("RespawnPoint");
         if (respawn == null) { respawn = new GameObject("RespawnPoint"); respawn.transform.position = new Vector3(-1f, 2f, 0f); }
 
-        // Player
         var p1GO = EnsurePlayerInScene("Player1", $"{PREFABS}/Player1.prefab", respawn.transform.position);
         WirePlayerComponents(p1GO, respawn.transform, crashClip, "Player");
 
-        // Solo HUD
         var hud = BuildSoloHUDCanvas(p1GO);
 
-        // Wire TrickManager toast target now that HUD is built
         var trick = p1GO.GetComponent<TrickManager>();
         if (trick != null) SetField(trick, "hudManager", hud);
 
-        // FinishLine
-        var fl = EnsureFinishLine();
+        var fl   = EnsureFinishLine();
         var flAS = fl.gameObject.GetComponent<AudioSource>();
-            if (flAS == null) flAS = fl.gameObject.AddComponent<AudioSource>();
+        if (flAS == null) flAS = fl.gameObject.AddComponent<AudioSource>();
         flAS.playOnAwake = false;
         var flSO = new SerializedObject(fl);
         flSO.FindProperty("isPvP").boolValue = false;
@@ -323,11 +274,9 @@ public static class SnowBoarderSetup_Part3
         SetRef(flSO, "finishClip",  finishClip);
         flSO.ApplyModifiedProperties();
 
-        // Snowflake pickups
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
 
-        // ── CameraFollow on Main Camera ──────────────────────────
         var mainCam = Object.FindAnyObjectByType<Camera>();
         if (mainCam != null)
         {
@@ -335,9 +284,8 @@ public static class SnowBoarderSetup_Part3
             var so = new SerializedObject(cf);
             SetRef(so, "target", p1GO.transform);
             so.ApplyModifiedProperties();
-            // Pre-position so camera starts at player, not world origin
             var offProp = so.FindProperty("offset");
-            Vector3 off = offProp != null ? offProp.vector3Value : new Vector3(0f, 2f, -10f);
+            Vector3 off     = offProp != null ? offProp.vector3Value : new Vector3(0f, 2f, -10f);
             Vector3 snapPos = p1GO.transform.position + off;
             snapPos.z = off.z;
             mainCam.transform.position = snapPos;
@@ -349,14 +297,11 @@ public static class SnowBoarderSetup_Part3
         Debug.Log("[Part3] Level1 (Solo) wired.");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // BUILD SOLO HUD CANVAS
-    // ─────────────────────────────────────────────────────────────
     static HUDManager BuildSoloHUDCanvas(GameObject player)
     {
         var cvGO = GameObject.Find("Canvas_HUD");
         if (cvGO == null) cvGO = new GameObject("Canvas_HUD");
-        var cv   = cvGO.GetComponent<Canvas>();
+        var cv = cvGO.GetComponent<Canvas>();
         if (cv == null) cv = cvGO.AddComponent<Canvas>();
         cv.renderMode = RenderMode.ScreenSpaceOverlay;
         if (!cvGO.GetComponent<CanvasScaler>())
@@ -414,9 +359,6 @@ public static class SnowBoarderSetup_Part3
         return hudMgr;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // WIRE PVP HUD
-    // ─────────────────────────────────────────────────────────────
     static void WireHUDPvP(HUDManager_PvP hudPvP, GameObject p1GO, GameObject p2GO)
     {
         var hudSO = new SerializedObject(hudPvP);
@@ -442,10 +384,8 @@ public static class SnowBoarderSetup_Part3
         var panel = cvGO.transform.Find("HUDPanel");
         if (panel == null) return;
 
-        // Border image (solid color outline — the first child of HUDPanel)
         SetRef(hudSO, $"{prefix}BorderPanel", panel.Find("Border")?.GetComponent<Image>());
 
-        // TMP elements — names are MakeTMP's text.Replace(" ","_").Replace("\n","")
         foreach (var tmp in panel.GetComponentsInChildren<TextMeshProUGUI>(true))
         {
             switch (tmp.name)
@@ -456,7 +396,6 @@ public static class SnowBoarderSetup_Part3
             }
         }
 
-        // Heart icons
         var heartsArr = hudSO.FindProperty($"{prefix}HeartIcons");
         heartsArr.arraySize = 3;
         for (int i = 0; i < 3; i++)
@@ -464,17 +403,12 @@ public static class SnowBoarderSetup_Part3
                 panel.Find($"Heart_{i}")?.GetComponent<Image>();
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // PLAYER COMPONENT WIRING
-    // ─────────────────────────────────────────────────────────────
     static void WirePlayerComponents(GameObject pGO, Transform respawn, AudioClip crashClip, string playerTag)
     {
-        // AudioSource on player root (used by CrashHandler)
         var pAS = pGO.GetComponent<AudioSource>();
         if (pAS == null) pAS = pGO.AddComponent<AudioSource>();
         pAS.playOnAwake = false;
 
-        // ── InputConfig ── CRITICAL: without this, no keyboard input works
         var ctrl = pGO.GetComponent<PlayerController>();
         if (ctrl != null)
         {
@@ -489,7 +423,6 @@ public static class SnowBoarderSetup_Part3
             else Debug.LogWarning($"[Part3] InputConfig not found at {inputPath} — run Part 1 first.");
         }
 
-        // CrashHandler (lives on Boarder_Top child)
         var crash = pGO.GetComponentInChildren<CrashHandler>();
         if (crash != null)
         {
@@ -502,7 +435,6 @@ public static class SnowBoarderSetup_Part3
             so.ApplyModifiedProperties();
         }
 
-        // TrickManager
         var trick = pGO.GetComponent<TrickManager>();
         if (trick != null)
         {
@@ -512,16 +444,14 @@ public static class SnowBoarderSetup_Part3
             so.ApplyModifiedProperties();
         }
 
-        // GroundChecker: default groundLayer=0 = "Nothing" → raycast hits nothing → always airborne
         var gc = pGO.GetComponentInChildren<GroundChecker>();
         if (gc != null)
         {
             var so = new SerializedObject(gc);
-            so.FindProperty("groundLayer").intValue = ~0;  // "Everything" (-1 as int)
+            so.FindProperty("groundLayer").intValue = ~0;
             so.ApplyModifiedProperties();
         }
 
-        // LivesManager player tag
         var lm = pGO.GetComponent<LivesManager>();
         if (lm != null)
         {
@@ -531,9 +461,6 @@ public static class SnowBoarderSetup_Part3
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // HELPERS
-    // ─────────────────────────────────────────────────────────────
     static void WireAudioManager(AudioManager mgr, AudioClip bgmClip)
     {
         var go       = mgr.gameObject;
@@ -633,12 +560,8 @@ public static class SnowBoarderSetup_Part3
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // PAUSE PANEL — full-screen overlay with Resume + Main Menu buttons
-    // ─────────────────────────────────────────────────────────────
     static void BuildPausePanel()
     {
-        // Dedicated canvas so pause overlay sits above game HUD
         var cvGO = EnsureGO("Canvas_Pause");
         var cv   = cvGO.GetComponent<Canvas>() ?? cvGO.AddComponent<Canvas>();
         cv.renderMode   = RenderMode.ScreenSpaceOverlay;
@@ -653,7 +576,6 @@ public static class SnowBoarderSetup_Part3
 
         var cvTr = cvGO.transform;
 
-        // PausePanel: semi-transparent full-screen overlay
         var panelTr = cvTr.Find("PausePanel");
         var panelGO = panelTr != null ? panelTr.gameObject : new GameObject("PausePanel", typeof(RectTransform));
         panelGO.transform.SetParent(cvTr, false);
@@ -666,23 +588,19 @@ public static class SnowBoarderSetup_Part3
         panelRT.offsetMin = Vector2.zero;
         panelRT.offsetMax = Vector2.zero;
 
-        // "PAUSED" title
         var titleGO  = EnsureTMP(panelGO.transform, "PauseTitle", "PAUSED", 72, new Vector2(0, 150), new Vector2(600, 100));
         var titleTMP = titleGO.GetComponent<TextMeshProUGUI>();
         titleTMP.fontStyle = FontStyles.Bold;
 
-        // Buttons
         var resumeBtn   = EnsureButton(panelGO.transform, "Resume_Btn",   "Resume",    new Vector2(0,  20));
         var mainMenuBtn = EnsureButton(panelGO.transform, "MainMenu_Btn", "Main Menu", new Vector2(0, -80));
 
-        // PausePanelUI controller — provides the onClick targets
         var ppUI = panelGO.GetComponent<PausePanelUI>() ?? panelGO.AddComponent<PausePanelUI>();
         if (resumeBtn.onClick.GetPersistentEventCount() == 0)
             UnityEventTools.AddPersistentListener(resumeBtn.onClick,   ppUI.Resume);
         if (mainMenuBtn.onClick.GetPersistentEventCount() == 0)
             UnityEventTools.AddPersistentListener(mainMenuBtn.onClick, ppUI.GoToMainMenu);
 
-        // Hidden by default — GameManager/PvPGameManager shows it on Escape
         panelGO.SetActive(false);
     }
 
@@ -700,7 +618,6 @@ public static class SnowBoarderSetup_Part3
         rt.anchoredPosition = pos;
         rt.sizeDelta        = new Vector2(280, 60);
 
-        // Text label inside button
         var labelGO = new GameObject("Label", typeof(RectTransform));
         labelGO.transform.SetParent(btnGO.transform, false);
         var tmp = labelGO.AddComponent<TextMeshProUGUI>();
@@ -717,17 +634,14 @@ public static class SnowBoarderSetup_Part3
         return btn;
     }
 
-    // Scene-file existence check (avoids errors if Part 2 hasn't run yet)
     static bool SceneExists(string sceneName)
     {
-        string path = $"{SCENES}/{sceneName}.unity";
-        bool exists = System.IO.File.Exists(
-            path.Replace("Assets/", Application.dataPath + "/"));
+        string path   = $"{SCENES}/{sceneName}.unity";
+        bool   exists = System.IO.File.Exists(path.Replace("Assets/", Application.dataPath + "/"));
         if (!exists) Debug.LogWarning($"[Part3] {sceneName}.unity not found — run Part 2 first.");
         return exists;
     }
 
-    // SerializedObject helpers
     static void SetRef(SerializedObject so, string prop, Object value)
     {
         var p = so.FindProperty(prop);

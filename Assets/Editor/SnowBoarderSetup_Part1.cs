@@ -1,8 +1,3 @@
-// Assets/Editor/SnowBoarderSetup_Part1.cs
-// SnowBoarder PRD v1.0.1 — Auto Setup Part 1
-// Menu: SnowBoarder > Setup > Run Full Setup   (runs Part1 + Part2)
-// Menu: SnowBoarder > Setup > Part 1 – Assets & Prefabs
-
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -11,14 +6,12 @@ using System.IO;
 
 public static class SnowBoarderSetup_Part1
 {
-    // ── Paths ──────────────────────────────────────────────────
     const string SCRIPTS   = "Assets/Scripts";
     const string SPRITES   = "Assets/Sprites";
     const string PREFABS   = "Assets/Prefabs";
     const string PHYSICS   = "Assets/Physics";
     const string TILEMAPS  = "Assets/Tilemaps";
 
-    // ── Menu entries ───────────────────────────────────────────
     [MenuItem("SnowBoarder/Setup/Run Full Setup")]
     public static void RunAll()
     {
@@ -41,7 +34,6 @@ public static class SnowBoarderSetup_Part1
         Debug.Log("[Part1] Assets, prefabs, physics material done.");
     }
 
-    // ── Folders ────────────────────────────────────────────────
     static void EnsureFolders()
     {
         string[] dirs = {
@@ -60,7 +52,6 @@ public static class SnowBoarderSetup_Part1
         }
     }
 
-    // ── InputConfig ScriptableObjects ──────────────────────────
     static void CreateInputConfigs()
     {
         CreateInputConfigAsset("Assets/Scripts/Player/InputConfig_P1.asset",
@@ -80,7 +71,6 @@ public static class SnowBoarderSetup_Part1
         Debug.Log($"[Part1] Created {path}");
     }
 
-    // ── Physics Material ───────────────────────────────────────
     static void CreatePhysicsMaterial()
     {
         const string path = "Assets/Physics/SnowMaterial.physicsMaterial2D";
@@ -115,12 +105,11 @@ public static class SnowBoarderSetup_Part1
         }
     }
 
-    // ── Prefabs ────────────────────────────────────────────────
     static void CreatePrefabs()
     {
         EnsureTags();
-        CreatePlayerPrefab("Player1", new Color(1f, 1f, 1f, 1f));              // white
-        CreatePlayerPrefab("Player2", new Color(1f, 0.42f, 0.208f, 1f));       // #FF6B35 orange
+        CreatePlayerPrefab("Player1", new Color(1f, 1f, 1f, 1f));
+        CreatePlayerPrefab("Player2", new Color(1f, 0.42f, 0.208f, 1f));
 
         CreateObstaclePrefab("Rock_Small",  0.3f);
         CreateObstaclePrefab("Rock_Large",  0.6f);
@@ -142,20 +131,17 @@ public static class SnowBoarderSetup_Part1
         var rb = root.AddComponent<Rigidbody2D>();
         rb.mass        = 1f;
         rb.angularDamping = 5f;
-        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous; // Prevent tunneling through ice
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
-        // Capsule collider for body (torso)
         var cc = root.AddComponent<CapsuleCollider2D>();
         cc.size = new Vector2(0.4f, 0.6f);
         cc.offset = new Vector2(0f, 0.1f);
 
-        // Controllers
         root.AddComponent<PlayerController>();
         root.AddComponent<ScoreManager>();
         root.AddComponent<LivesManager>();
         root.AddComponent<TrickManager>();
 
-        // Boarder_Top child (crash collider)
         var top = new GameObject("Boarder_Top");
         top.transform.SetParent(root.transform);
         top.transform.localPosition = new Vector3(0, 0.35f, 0);
@@ -166,24 +152,20 @@ public static class SnowBoarderSetup_Part1
         topCol.radius = 0.25f;
         top.AddComponent<CrashHandler>();
 
-        // Boarder_Bottom child (board)
         var bot = new GameObject("Boarder_Bottom");
         bot.transform.SetParent(root.transform);
         bot.transform.localPosition = new Vector3(0, -0.3f, 0);
         var botSR = bot.AddComponent<SpriteRenderer>();
         botSR.color = tint;
         botSR.sortingLayerName = "Player";
-        
-        // Snowboard collider (horizontal) for smooth sliding
+
         var botCol = bot.AddComponent<CapsuleCollider2D>();
         botCol.direction = CapsuleDirection2D.Horizontal;
         botCol.size = new Vector2(1.2f, 0.15f);
         botCol.offset = new Vector2(0f, -0.05f);
 
-        // GroundChecker
-        var gc = bot.AddComponent<GroundChecker>();
+        bot.AddComponent<GroundChecker>();
 
-        // Load sprites if available
         var sprTop = AssetDatabase.LoadAssetAtPath<Sprite>($"{SPRITES}/Characters/Boarder_Top.png");
         var sprBot = AssetDatabase.LoadAssetAtPath<Sprite>($"{SPRITES}/Characters/Boarder_Bottom.png");
         if (sprTop) topSR.sprite = sprTop;
@@ -247,13 +229,12 @@ public static class SnowBoarderSetup_Part1
         }
         var col = go.AddComponent<BoxCollider2D>();
         col.isTrigger = true;
-        var pu = go.AddComponent<PowerUp>();
+        go.AddComponent<PowerUp>();
         PrefabUtility.SaveAsPrefabAsset(go, path);
         Object.DestroyImmediate(go);
         Debug.Log($"[Part1] Created {path}");
     }
 
-    // ── Build Settings ─────────────────────────────────────────
     static void SetBuildScenes()
     {
         var sceneNames = new[] {

@@ -1,7 +1,3 @@
-// Assets/Editor/SnowBoarderSetup_Part2.cs
-// SnowBoarder PRD v1.0.1 — Auto Setup Part 2
-// Builds all scenes: MainMenu, ModeSelect, ScoreSummary, PvPSummary, Level1_PvP
-
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -31,11 +27,9 @@ public static class SnowBoarderSetup_Part2
         Debug.Log("[Part2] All scenes created.");
     }
 
-    // ── Helpers ────────────────────────────────────────────────
     static UnityEngine.SceneManagement.Scene NewScene(string name)
     {
-        var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        return scene;
+        return EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
     }
 
     static void SaveScene(UnityEngine.SceneManagement.Scene scene, string name)
@@ -44,7 +38,6 @@ public static class SnowBoarderSetup_Part2
         Debug.Log($"[Part2] Saved {name}.unity");
     }
 
-    // Canvas helper: Overlay canvas + EventSystem
     static GameObject MakeCanvas(string cname = "Canvas")
     {
         var cvGO = new GameObject(cname);
@@ -61,15 +54,14 @@ public static class SnowBoarderSetup_Part2
         return cvGO;
     }
 
-    // Text + Button helpers
     static GameObject MakeTMP(Transform parent, string text, int fontSize, Vector2 pos, Vector2 size)
     {
         var go = new GameObject(text.Replace(" ","_").Replace("\n",""), typeof(RectTransform));
         go.transform.SetParent(parent, false);
         var tmp = go.AddComponent<TextMeshProUGUI>();
         tmp.raycastTarget = false;
-        tmp.text     = text;
-        tmp.fontSize = fontSize;
+        tmp.text      = text;
+        tmp.fontSize  = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
         var rt = go.GetComponent<RectTransform>();
@@ -90,12 +82,10 @@ public static class SnowBoarderSetup_Part2
         var rt   = go.GetComponent<RectTransform>();
         rt.anchoredPosition = pos;
         rt.sizeDelta        = size;
-        // Label
         MakeTMP(go.transform, label, 24, Vector2.zero, size);
         return btn;
     }
 
-    // Panel with colored border image
     static GameObject MakePanel(Transform parent, string name, Color color, Vector2 pos, Vector2 size)
     {
         var go  = new GameObject(name, typeof(RectTransform));
@@ -108,7 +98,6 @@ public static class SnowBoarderSetup_Part2
         return go;
     }
 
-    // ── MainMenu Scene ─────────────────────────────────────────
     static void BuildMainMenuScene()
     {
         var scene = NewScene("MainMenu");
@@ -118,19 +107,17 @@ public static class SnowBoarderSetup_Part2
         var cvTr = cv.transform;
 
         MakeTMP(cvTr, "Snow Boarder", 72, new Vector2(0, 250), new Vector2(800, 120));
-        var startBtn   = MakeButton(cvTr, "Start",   new Vector2(0,  80));
-        var optionsBtn = MakeButton(cvTr, "Options", new Vector2(0,   0));
-        var quitBtn    = MakeButton(cvTr, "Quit",    new Vector2(0, -80));
+        MakeButton(cvTr, "Start",   new Vector2(0,  80));
+        MakeButton(cvTr, "Options", new Vector2(0,   0));
+        MakeButton(cvTr, "Quit",    new Vector2(0, -80));
 
-        // Options panel (hidden by default)
         var optPanel = MakePanel(cvTr, "OptionsPanel", new Color(0.1f,0.1f,0.1f,0.95f), Vector2.zero, new Vector2(500,300));
         optPanel.SetActive(false);
         MakeTMP(optPanel.transform, "SFX Volume",   20, new Vector2(0,  80), new Vector2(400, 40));
         MakeTMP(optPanel.transform, "Music Volume", 20, new Vector2(0,  20), new Vector2(400, 40));
 
-        var mgr = new GameObject("MainMenuManager").AddComponent<MainMenuManager>();
+        new GameObject("MainMenuManager").AddComponent<MainMenuManager>();
 
-        // Camera
         var cam = new GameObject("Main Camera");
         cam.AddComponent<Camera>().backgroundColor = new Color(0.52f, 0.80f, 0.98f);
         cam.AddComponent<AudioListener>();
@@ -139,7 +126,6 @@ public static class SnowBoarderSetup_Part2
         SaveScene(scene, "MainMenu");
     }
 
-    // ── ModeSelect Scene ───────────────────────────────────────
     static void BuildModeSelectScene()
     {
         var scene = NewScene("ModeSelect");
@@ -147,15 +133,14 @@ public static class SnowBoarderSetup_Part2
 
         var cvTr = MakeCanvas().transform;
         MakeTMP(cvTr, "Select Mode", 56, new Vector2(0, 200), new Vector2(600, 100));
-        MakeButton(cvTr, "Solo",      new Vector2(0,  50), new Vector2(320, 80));
-        MakeButton(cvTr, "PvP",       new Vector2(0, -50), new Vector2(320, 80));
-        MakeButton(cvTr, "Back",      new Vector2(0,-150), new Vector2(200, 60));
+        MakeButton(cvTr, "Solo", new Vector2(0,  50), new Vector2(320, 80));
+        MakeButton(cvTr, "PvP",  new Vector2(0, -50), new Vector2(320, 80));
+        MakeButton(cvTr, "Back", new Vector2(0,-150), new Vector2(200, 60));
         new GameObject("ModeSelectManager").AddComponent<ModeSelectManager>();
         AddCamera();
         SaveScene(scene, "ModeSelect");
     }
 
-    // ── ScoreSummary Scene ─────────────────────────────────────
     static void BuildScoreSummaryScene()
     {
         var scene = NewScene("ScoreSummary");
@@ -171,7 +156,6 @@ public static class SnowBoarderSetup_Part2
         SaveScene(scene, "ScoreSummary");
     }
 
-    // ── PvPSummary Scene ───────────────────────────────────────
     static void BuildPvPSummaryScene()
     {
         var scene = NewScene("PvPSummary");
@@ -187,10 +171,8 @@ public static class SnowBoarderSetup_Part2
         SaveScene(scene, "PvPSummary");
     }
 
-    // ── Level1_PvP Scene ───────────────────────────────────────
     static void BuildLevel1PvPScene()
     {
-        // Load Level1 as starting point
         string level1Path = $"{SCENES}/Level1.unity";
         UnityEngine.SceneManagement.Scene scene;
         if (System.IO.File.Exists(level1Path.Replace("Assets/", Application.dataPath+"/")))
@@ -198,19 +180,14 @@ public static class SnowBoarderSetup_Part2
         else
             scene = NewScene("Level1_PvP");
 
-        // ── Player 1 spawn point ───────────────────────────────
         var sp1 = new GameObject("SpawnPoint_P1");
         sp1.transform.position = new Vector3(-1f, 2f, 0f);
 
-        // ── Player 2 spawn point ───────────────────────────────
         var sp2 = new GameObject("SpawnPoint_P2");
         sp2.transform.position = new Vector3(1f, 2f, 0f);
 
-        // ── PvPGameManager ─────────────────────────────────────
         new GameObject("PvPGameManager").AddComponent<PvPGameManager>();
 
-        // ── Split-screen Cameras ───────────────────────────────
-        // Main Camera (left half)
         var mainCam = Object.FindAnyObjectByType<Camera>();
         if (mainCam == null)
         {
@@ -221,17 +198,15 @@ public static class SnowBoarderSetup_Part2
         }
         mainCam.rect = new Rect(0f, 0f, 0.5f, 1f);
 
-        // Camera2 (right half)
         var cam2GO = new GameObject("Camera2");
         var cam2   = cam2GO.AddComponent<Camera>();
         cam2.depth      = 1;
         cam2.rect       = new Rect(0.5f, 0f, 0.5f, 1f);
         cam2.clearFlags = CameraClearFlags.Depth;
 
-        // ── Split line UI ──────────────────────────────────────
         var divCanvas = new GameObject("Canvas_Divider");
         var dc = divCanvas.AddComponent<Canvas>();
-        dc.renderMode  = RenderMode.ScreenSpaceOverlay;
+        dc.renderMode   = RenderMode.ScreenSpaceOverlay;
         dc.sortingOrder = 99;
         divCanvas.AddComponent<GraphicRaycaster>();
 
@@ -246,26 +221,19 @@ public static class SnowBoarderSetup_Part2
         lineRT.anchoredPosition = Vector2.zero;
         line.AddComponent<SplitScreenDivider>();
 
-        // ── P1 HUD Canvas (Camera-space, MainCamera) ───────────
         BuildPvPHudCanvas("Canvas_HUD_P1", mainCam, P1Color, "P1", new Vector2(-450, 30));
+        BuildPvPHudCanvas("Canvas_HUD_P2", cam2,    P2Color, "P2", new Vector2(-450, 30));
 
-        // ── P2 HUD Canvas (Camera-space, Camera2) ─────────────
-        BuildPvPHudCanvas("Canvas_HUD_P2", cam2,   P2Color, "P2", new Vector2(-450, 30));
-
-        // ── HUDManager_PvP ─────────────────────────────────────
         new GameObject("HUDManager_PvP").AddComponent<HUDManager_PvP>();
 
-        // ── Controls Overlay ───────────────────────────────────
         BuildControlsOverlay();
 
-        // ── FinishLine (placeholder at bottom) ─────────────────
         var fl = new GameObject("FinishLine");
         fl.transform.position = new Vector3(0f, -30f, 0f);
         var flCol = fl.AddComponent<BoxCollider2D>();
         flCol.isTrigger = true;
         flCol.size = new Vector2(20f, 1f);
         var flScript = fl.AddComponent<FinishLine>();
-        // Set isPvP via SerializedObject
         var so = new SerializedObject(flScript);
         so.FindProperty("isPvP").boolValue = true;
         so.ApplyModifiedProperties();
@@ -277,27 +245,25 @@ public static class SnowBoarderSetup_Part2
     {
         var cvGO = new GameObject(name);
         var cv   = cvGO.AddComponent<Canvas>();
-        cv.renderMode  = RenderMode.ScreenSpaceCamera;
-        cv.worldCamera = cam;
+        cv.renderMode    = RenderMode.ScreenSpaceCamera;
+        cv.worldCamera   = cam;
         cv.planeDistance = 1f;
         var cs = cvGO.AddComponent<CanvasScaler>();
         cs.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        cs.referenceResolution = new Vector2(960, 1080); // half-width viewport
+        cs.referenceResolution = new Vector2(960, 1080);
         cvGO.AddComponent<GraphicRaycaster>();
 
-        // Border panel (colored)
         var panel = new GameObject("HUDPanel", typeof(RectTransform));
         panel.transform.SetParent(cvGO.transform, false);
         var pImg = panel.AddComponent<Image>();
         pImg.color = new Color(borderColor.r, borderColor.g, borderColor.b, 0.15f);
         var pRT = panel.GetComponent<RectTransform>();
-        pRT.anchorMin       = new Vector2(0f, 1f);
-        pRT.anchorMax       = new Vector2(0f, 1f);
-        pRT.pivot           = new Vector2(0f, 1f);
+        pRT.anchorMin        = new Vector2(0f, 1f);
+        pRT.anchorMax        = new Vector2(0f, 1f);
+        pRT.pivot            = new Vector2(0f, 1f);
         pRT.anchoredPosition = new Vector2(10f, -10f);
-        pRT.sizeDelta       = new Vector2(280f, 160f);
+        pRT.sizeDelta        = new Vector2(280f, 160f);
 
-        // Border outline image (solid color strip)
         var border = new GameObject("Border", typeof(RectTransform));
         border.transform.SetParent(panel.transform, false);
         var bImg = border.AddComponent<Image>();
@@ -308,13 +274,11 @@ public static class SnowBoarderSetup_Part2
         bRT.offsetMax = new Vector2(3f, 3f);
         border.transform.SetAsFirstSibling();
 
-        // Player label
-        MakeTMP(panel.transform, playerLabel, 20, new Vector2(0f, -15f), new Vector2(270, 30));
-        MakeTMP(panel.transform, "Score: 0",  16, new Vector2(0f, -50f), new Vector2(270, 25));
-        MakeTMP(panel.transform, "0 km/h",    16, new Vector2(0f, -75f), new Vector2(270, 25));
-        MakeTMP(panel.transform, "×1",        16, new Vector2(0f,-100f), new Vector2(270, 25));
+        MakeTMP(panel.transform, playerLabel, 20, new Vector2(0f,  -15f), new Vector2(270, 30));
+        MakeTMP(panel.transform, "Score: 0",  16, new Vector2(0f,  -50f), new Vector2(270, 25));
+        MakeTMP(panel.transform, "0 km/h",    16, new Vector2(0f,  -75f), new Vector2(270, 25));
+        MakeTMP(panel.transform, "×1",        16, new Vector2(0f, -100f), new Vector2(270, 25));
 
-        // Heart icons row
         for (int i = 0; i < 3; i++)
         {
             var h = new GameObject($"Heart_{i}", typeof(RectTransform));
@@ -333,7 +297,7 @@ public static class SnowBoarderSetup_Part2
     {
         var cvGO = new GameObject("Canvas_ControlsOverlay");
         var cv   = cvGO.AddComponent<Canvas>();
-        cv.renderMode  = RenderMode.ScreenSpaceOverlay;
+        cv.renderMode   = RenderMode.ScreenSpaceOverlay;
         cv.sortingOrder = 50;
         cvGO.AddComponent<GraphicRaycaster>();
 
@@ -357,7 +321,6 @@ public static class SnowBoarderSetup_Part2
         so.ApplyModifiedProperties();
     }
 
-    // ── Tiny helpers ───────────────────────────────────────────
     static void SetSkyBg()
     {
         RenderSettings.skybox = null;
@@ -366,10 +329,10 @@ public static class SnowBoarderSetup_Part2
 
     static void AddCamera()
     {
-        var go = new GameObject("Main Camera");
+        var go  = new GameObject("Main Camera");
         var cam = go.AddComponent<Camera>();
-        cam.backgroundColor  = new Color(0.52f, 0.80f, 0.98f, 1f);
-        cam.clearFlags       = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0.52f, 0.80f, 0.98f, 1f);
+        cam.clearFlags      = CameraClearFlags.SolidColor;
         go.AddComponent<AudioListener>();
         go.tag = "MainCamera";
     }

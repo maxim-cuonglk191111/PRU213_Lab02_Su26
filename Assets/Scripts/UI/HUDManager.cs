@@ -3,13 +3,8 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Solo-mode HUD: updates score, speed, lives icons, multiplier.
-/// Also exposes ShowToast(string) used by TrickManager.
-/// </summary>
 public class HUDManager : MonoBehaviour
 {
-    // ── Inspector ──────────────────────────────────────────────
     [Header("References")]
     [SerializeField] private ScoreManager  scoreManager;
     [SerializeField] private LivesManager  livesManager;
@@ -22,16 +17,14 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI toastText;
 
     [Header("Lives Icons")]
-    [SerializeField] private Image[] heartIcons;  // pre-placed in Canvas
+    [SerializeField] private Image[] heartIcons;
 
     [Header("Toast")]
-    [SerializeField] private float toastDuration = 1.5f;  // hold time at full opacity
+    [SerializeField] private float toastDuration = 1.5f;
     [SerializeField] private float fadeDuration   = 0.2f;
 
-    // ── State ──────────────────────────────────────────────────
     private Coroutine _toastCoroutine;
 
-    // ── Lifecycle ──────────────────────────────────────────────
     private void Awake()
     {
         if (toastText != null) toastText.gameObject.SetActive(false);
@@ -55,7 +48,6 @@ public class HUDManager : MonoBehaviour
         UpdateMultiplier();
     }
 
-    // ── Update Methods ─────────────────────────────────────────
     private void UpdateScore(int score)
     {
         if (scoreText != null) scoreText.text = $"Score: {score}";
@@ -81,7 +73,6 @@ public class HUDManager : MonoBehaviour
                 heartIcons[i].enabled = i < lives;
     }
 
-    // ── Public API ─────────────────────────────────────────────
     public void ShowToast(string message)
     {
         if (toastText == null) return;
@@ -95,7 +86,6 @@ public class HUDManager : MonoBehaviour
         toastText.alpha = 0f;
         toastText.gameObject.SetActive(true);
 
-        // Fade in
         for (float t = 0f; t < fadeDuration; t += Time.deltaTime)
         {
             toastText.alpha = Mathf.Clamp01(t / fadeDuration);
@@ -103,10 +93,8 @@ public class HUDManager : MonoBehaviour
         }
         toastText.alpha = 1f;
 
-        // Hold at full opacity
         yield return new WaitForSeconds(toastDuration);
 
-        // Fade out
         for (float t = 0f; t < fadeDuration; t += Time.deltaTime)
         {
             toastText.alpha = Mathf.Clamp01(1f - t / fadeDuration);
