@@ -233,19 +233,24 @@ public static class SnowBoarderSetup_Part3
         }
 
         // ── CameraFollow: P1 camera follows P1, P2 camera follows P2 ──
-        void WireCam(string camName, GameObject target)
+        // Also pre-positions the camera so it starts AT the player, not at world-origin.
+        void WireCam(string camName, GameObject playerTarget)
         {
             var camGO = GameObject.Find(camName);
-            if (camGO != null)
-            {
-                var cf = camGO.GetComponent<CameraFollow>();
-                if (cf == null) cf = camGO.AddComponent<CameraFollow>();
-                var cfSO = new SerializedObject(cf);
-                SetRef(cfSO, "target", target.transform);
-                cfSO.ApplyModifiedProperties();
-            }
+            if (camGO == null) return;
+            var cf = camGO.GetComponent<CameraFollow>() ?? camGO.AddComponent<CameraFollow>();
+            var cfSO = new SerializedObject(cf);
+            SetRef(cfSO, "target", playerTarget.transform);
+            cfSO.ApplyModifiedProperties();
+
+            // Pre-position in Editor so the camera's saved transform is already correct
+            var offProp = cfSO.FindProperty("offset");
+            Vector3 off = offProp != null ? offProp.vector3Value : new Vector3(0f, 2f, -10f);
+            Vector3 snapPos = playerTarget.transform.position + off;
+            snapPos.z = off.z;  // camera Z depth from offset
+            camGO.transform.position = snapPos;
         }
-        
+
         WireCam("Main Camera", p1GO);
         WireCam("Camera2", p2GO);
 
@@ -288,6 +293,10 @@ public static class SnowBoarderSetup_Part3
         EnsureComponent<GameManager>("GameManager");
         EnsureEventSystem();
 
+        // Remove any Player2 that Part2 may have carried over from the Level1 base scene
+        var strayP2 = GameObject.Find("Player2");
+        if (strayP2 != null) { Object.DestroyImmediate(strayP2); Debug.Log("[Part3] Removed stray Player2 from Level1 solo scene."); }
+
         // Respawn / spawn point
         var respawn = GameObject.Find("RespawnPoint");
         if (respawn == null) { respawn = new GameObject("RespawnPoint"); respawn.transform.position = new Vector3(-1f, 2f, 0f); }
@@ -322,11 +331,16 @@ public static class SnowBoarderSetup_Part3
         var mainCam = Object.FindAnyObjectByType<Camera>();
         if (mainCam != null)
         {
-            var cf = mainCam.gameObject.GetComponent<CameraFollow>();
-            if (cf == null) cf = mainCam.gameObject.AddComponent<CameraFollow>();
+            var cf = mainCam.gameObject.GetComponent<CameraFollow>() ?? mainCam.gameObject.AddComponent<CameraFollow>();
             var so = new SerializedObject(cf);
             SetRef(so, "target", p1GO.transform);
             so.ApplyModifiedProperties();
+            // Pre-position so camera starts at player, not world origin
+            var offProp = so.FindProperty("offset");
+            Vector3 off = offProp != null ? offProp.vector3Value : new Vector3(0f, 2f, -10f);
+            Vector3 snapPos = p1GO.transform.position + off;
+            snapPos.z = off.z;
+            mainCam.transform.position = snapPos;
         }
 
         BuildPausePanel();

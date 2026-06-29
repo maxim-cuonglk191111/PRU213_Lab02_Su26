@@ -22,6 +22,17 @@ public class CameraFollow : MonoBehaviour
     [SerializeField] private Vector2 minBounds = new Vector2(-50f, -50f);
     [SerializeField] private Vector2 maxBounds = new Vector2( 50f,  50f);
 
+    private void Start()
+    {
+        // Snap to target immediately so the camera isn't panning from world origin on frame 1
+        if (target != null)
+        {
+            Vector3 snap = target.position + offset;
+            snap.z = transform.position.z;
+            transform.position = snap;
+        }
+    }
+
     private void LateUpdate()
     {
         if (target == null) return;
