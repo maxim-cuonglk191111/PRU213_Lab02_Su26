@@ -8,16 +8,20 @@
 
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.Events;
 using UnityEditor.SceneManagement;
+using UnityEngine.Events;
 using UnityEngine.UI;
 using TMPro;
 
 public static class SnowBoarderSetup_Part3
 {
-    const string SCENES  = "Assets/Scenes";
-    const string PREFABS = "Assets/Prefabs";
-    const string AUDIO   = "Assets/Audio";
-    const string SPRITES = "Assets/Sprites";
+    const string SCENES   = "Assets/Scenes";
+    const string PREFABS  = "Assets/Prefabs";
+    const string AUDIO    = "Assets/Audio";
+    const string SPRITES  = "Assets/Sprites";
+    const string INPUT_P1 = "Assets/Scripts/Player/InputConfig_P1.asset";
+    const string INPUT_P2 = "Assets/Scripts/Player/InputConfig_P2.asset";
 
     [MenuItem("SnowBoarder/Setup/Part 3 – Wire Scenes")]
     public static void RunPart3()
@@ -77,7 +81,7 @@ public static class SnowBoarderSetup_Part3
         var audioMgr = EnsureComponent<AudioManager>("AudioManager");
         WireAudioManager(audioMgr, LoadAudio("bgm_snow.ogg"));
 
-        var mmm = Object.FindObjectOfType<MainMenuManager>();
+        var mmm = Object.FindAnyObjectByType<MainMenuManager>();
         if (mmm != null)
         {
             var so = new SerializedObject(mmm);
@@ -100,7 +104,7 @@ public static class SnowBoarderSetup_Part3
         if (!SceneExists("ModeSelect")) return;
         var scene = EditorSceneManager.OpenScene($"{SCENES}/ModeSelect.unity", OpenSceneMode.Single);
 
-        var msm = Object.FindObjectOfType<ModeSelectManager>();
+        var msm = Object.FindAnyObjectByType<ModeSelectManager>();
         if (msm != null)
         {
             var so = new SerializedObject(msm);
@@ -122,7 +126,7 @@ public static class SnowBoarderSetup_Part3
         if (!SceneExists("ScoreSummary")) return;
         var scene = EditorSceneManager.OpenScene($"{SCENES}/ScoreSummary.unity", OpenSceneMode.Single);
 
-        var mgr = Object.FindObjectOfType<ScoreSummaryManager>();
+        var mgr = Object.FindAnyObjectByType<ScoreSummaryManager>();
         if (mgr != null)
         {
             var so = new SerializedObject(mgr);
@@ -145,7 +149,7 @@ public static class SnowBoarderSetup_Part3
         if (!SceneExists("PvPSummary")) return;
         var scene = EditorSceneManager.OpenScene($"{SCENES}/PvPSummary.unity", OpenSceneMode.Single);
 
-        var mgr = Object.FindObjectOfType<PvPSummaryManager>();
+        var mgr = Object.FindAnyObjectByType<PvPSummaryManager>();
         if (mgr != null)
         {
             var so = new SerializedObject(mgr);
@@ -175,7 +179,7 @@ public static class SnowBoarderSetup_Part3
         var bgmClip    = LoadAudio("bgm_snow.ogg");
 
         // Remove any stray Solo GameManager that may have carried over from Level1
-        var strayGM = Object.FindObjectOfType<GameManager>();
+        var strayGM = Object.FindAnyObjectByType<GameManager>();
         if (strayGM != null) Object.DestroyImmediate(strayGM.gameObject);
 
         // AudioManager
@@ -185,10 +189,11 @@ public static class SnowBoarderSetup_Part3
         EnsureEventSystem();
 
         // Spawn points
-        var sp1 = EnsureGO("SpawnPoint_P1");
-        var sp2 = EnsureGO("SpawnPoint_P2");
-        sp1.transform.position = new Vector3(-1f, 2f, 0f);
-        sp2.transform.position = new Vector3(1f,  2f, 0f);
+        var sp1 = GameObject.Find("SpawnPoint_P1");
+        if (sp1 == null) { sp1 = new GameObject("SpawnPoint_P1"); sp1.transform.position = new Vector3(-1f, 2f, 0f); }
+        
+        var sp2 = GameObject.Find("SpawnPoint_P2");
+        if (sp2 == null) { sp2 = new GameObject("SpawnPoint_P2"); sp2.transform.position = new Vector3(1f, 2f, 0f); }
 
         // Player instances
         var p1GO = EnsurePlayerInScene("Player1", $"{PREFABS}/Player1.prefab", sp1.transform.position);
@@ -198,8 +203,8 @@ public static class SnowBoarderSetup_Part3
         WirePlayerComponents(p2GO, sp2.transform, crashClip, "Player2");
 
         // PvPGameManager
-        var pvp = Object.FindObjectOfType<PvPGameManager>()
-                  ?? new GameObject("PvPGameManager").AddComponent<PvPGameManager>();
+        var pvp = Object.FindAnyObjectByType<PvPGameManager>();
+        if (pvp == null) pvp = new GameObject("PvPGameManager").AddComponent<PvPGameManager>();
         var pvpSO = new SerializedObject(pvp);
         SetRef(pvpSO, "player1",       p1GO);
         SetRef(pvpSO, "player2",       p2GO);
@@ -210,14 +215,15 @@ public static class SnowBoarderSetup_Part3
         pvpSO.ApplyModifiedProperties();
 
         // HUDManager_PvP
-        var hudPvP = Object.FindObjectOfType<HUDManager_PvP>();
+        var hudPvP = Object.FindAnyObjectByType<HUDManager_PvP>();
         if (hudPvP != null) WireHUDPvP(hudPvP, p1GO, p2GO);
 
         // FinishLine audio
-        var fl = Object.FindObjectOfType<FinishLine>();
+        var fl = Object.FindAnyObjectByType<FinishLine>();
         if (fl != null)
         {
-            var flAS = fl.gameObject.GetComponent<AudioSource>() ?? fl.gameObject.AddComponent<AudioSource>();
+            var flAS = fl.gameObject.GetComponent<AudioSource>();
+            if (flAS == null) flAS = fl.gameObject.AddComponent<AudioSource>();
             flAS.playOnAwake = false;
             var flSO = new SerializedObject(fl);
             flSO.FindProperty("isPvP").boolValue = true;
@@ -226,9 +232,28 @@ public static class SnowBoarderSetup_Part3
             flSO.ApplyModifiedProperties();
         }
 
+        // ── CameraFollow: P1 camera follows P1, P2 camera follows P2 ──
+        void WireCam(string camName, GameObject target)
+        {
+            var camGO = GameObject.Find(camName);
+            if (camGO != null)
+            {
+                var cf = camGO.GetComponent<CameraFollow>();
+                if (cf == null) cf = camGO.AddComponent<CameraFollow>();
+                var cfSO = new SerializedObject(cf);
+                SetRef(cfSO, "target", target.transform);
+                cfSO.ApplyModifiedProperties();
+            }
+        }
+        
+        WireCam("Main Camera", p1GO);
+        WireCam("Camera2", p2GO);
+
         // Snowflake pickups already in scene
-        foreach (var ph in Object.FindObjectsOfType<PickupHandler>())
+        foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
+
+        BuildPausePanel();
 
         EditorSceneManager.SaveScene(scene);
         Debug.Log("[Part3] Level1_PvP wired.");
@@ -252,8 +277,8 @@ public static class SnowBoarderSetup_Part3
         EnsureEventSystem();
 
         // Respawn / spawn point
-        var respawn = EnsureGO("RespawnPoint");
-        respawn.transform.position = new Vector3(-1f, 2f, 0f);
+        var respawn = GameObject.Find("RespawnPoint");
+        if (respawn == null) { respawn = new GameObject("RespawnPoint"); respawn.transform.position = new Vector3(-1f, 2f, 0f); }
 
         // Player
         var p1GO = EnsurePlayerInScene("Player1", $"{PREFABS}/Player1.prefab", respawn.transform.position);
@@ -268,7 +293,8 @@ public static class SnowBoarderSetup_Part3
 
         // FinishLine
         var fl = EnsureFinishLine();
-        var flAS = fl.gameObject.GetComponent<AudioSource>() ?? fl.gameObject.AddComponent<AudioSource>();
+        var flAS = fl.gameObject.GetComponent<AudioSource>();
+            if (flAS == null) flAS = fl.gameObject.AddComponent<AudioSource>();
         flAS.playOnAwake = false;
         var flSO = new SerializedObject(fl);
         flSO.FindProperty("isPvP").boolValue = false;
@@ -277,8 +303,21 @@ public static class SnowBoarderSetup_Part3
         flSO.ApplyModifiedProperties();
 
         // Snowflake pickups
-        foreach (var ph in Object.FindObjectsOfType<PickupHandler>())
+        foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
+
+        // ── CameraFollow on Main Camera ──────────────────────────
+        var mainCam = Object.FindAnyObjectByType<Camera>();
+        if (mainCam != null)
+        {
+            var cf = mainCam.gameObject.GetComponent<CameraFollow>();
+            if (cf == null) cf = mainCam.gameObject.AddComponent<CameraFollow>();
+            var so = new SerializedObject(cf);
+            SetRef(so, "target", p1GO.transform);
+            so.ApplyModifiedProperties();
+        }
+
+        BuildPausePanel();
 
         EditorSceneManager.SaveScene(scene);
         Debug.Log("[Part3] Level1 (Solo) wired.");
@@ -289,8 +328,10 @@ public static class SnowBoarderSetup_Part3
     // ─────────────────────────────────────────────────────────────
     static HUDManager BuildSoloHUDCanvas(GameObject player)
     {
-        var cvGO = GameObject.Find("Canvas_HUD") ?? new GameObject("Canvas_HUD");
-        var cv   = cvGO.GetComponent<Canvas>() ?? cvGO.AddComponent<Canvas>();
+        var cvGO = GameObject.Find("Canvas_HUD");
+        if (cvGO == null) cvGO = new GameObject("Canvas_HUD");
+        var cv   = cvGO.GetComponent<Canvas>();
+        if (cv == null) cv = cvGO.AddComponent<Canvas>();
         cv.renderMode = RenderMode.ScreenSpaceOverlay;
         if (!cvGO.GetComponent<CanvasScaler>())
         {
@@ -316,7 +357,8 @@ public static class SnowBoarderSetup_Part3
             var existingTr = cvTr.Find(hName);
             var hGO        = existingTr ? existingTr.gameObject : new GameObject(hName, typeof(RectTransform));
             hGO.transform.SetParent(cvTr, false);
-            var hImg = hGO.GetComponent<Image>() ?? hGO.AddComponent<Image>();
+            var hImg = hGO.GetComponent<Image>();
+            if (hImg == null) hImg = hGO.AddComponent<Image>();
             if (sprHeart) hImg.sprite = sprHeart;
             hImg.color = Color.red;
             var hRT = hGO.GetComponent<RectTransform>();
@@ -325,8 +367,10 @@ public static class SnowBoarderSetup_Part3
             hearts[i] = hImg;
         }
 
-        var hudGO  = GameObject.Find("HUDManager") ?? new GameObject("HUDManager");
-        var hudMgr = hudGO.GetComponent<HUDManager>() ?? hudGO.AddComponent<HUDManager>();
+        var hudGO  = GameObject.Find("HUDManager");
+        if (hudGO == null) hudGO = new GameObject("HUDManager");
+        var hudMgr = hudGO.GetComponent<HUDManager>();
+        if (hudMgr == null) hudMgr = hudGO.AddComponent<HUDManager>();
         var hudSO  = new SerializedObject(hudMgr);
         SetRef(hudSO, "scoreManager",   player.GetComponent<ScoreManager>());
         SetRef(hudSO, "livesManager",   player.GetComponent<LivesManager>());
@@ -400,8 +444,24 @@ public static class SnowBoarderSetup_Part3
     static void WirePlayerComponents(GameObject pGO, Transform respawn, AudioClip crashClip, string playerTag)
     {
         // AudioSource on player root (used by CrashHandler)
-        var pAS = pGO.GetComponent<AudioSource>() ?? pGO.AddComponent<AudioSource>();
+        var pAS = pGO.GetComponent<AudioSource>();
+        if (pAS == null) pAS = pGO.AddComponent<AudioSource>();
         pAS.playOnAwake = false;
+
+        // ── InputConfig ── CRITICAL: without this, no keyboard input works
+        var ctrl = pGO.GetComponent<PlayerController>();
+        if (ctrl != null)
+        {
+            string inputPath = (playerTag == "Player") ? INPUT_P1 : INPUT_P2;
+            var cfg = AssetDatabase.LoadAssetAtPath<InputConfig>(inputPath);
+            if (cfg != null)
+            {
+                var so = new SerializedObject(ctrl);
+                SetRef(so, "inputConfig", cfg);
+                so.ApplyModifiedProperties();
+            }
+            else Debug.LogWarning($"[Part3] InputConfig not found at {inputPath} — run Part 1 first.");
+        }
 
         // CrashHandler (lives on Boarder_Top child)
         var crash = pGO.GetComponentInChildren<CrashHandler>();
@@ -456,7 +516,7 @@ public static class SnowBoarderSetup_Part3
 
     static FinishLine EnsureFinishLine()
     {
-        var fl = Object.FindObjectOfType<FinishLine>();
+        var fl = Object.FindAnyObjectByType<FinishLine>();
         if (fl != null) return fl;
         var go  = new GameObject("FinishLine");
         go.transform.position = new Vector3(0f, -30f, 0f);
@@ -468,7 +528,7 @@ public static class SnowBoarderSetup_Part3
 
     static void EnsureEventSystem()
     {
-        if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() != null) return;
+        if (Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() != null) return;
         var es = new GameObject("EventSystem");
         es.AddComponent<UnityEngine.EventSystems.EventSystem>();
         es.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
@@ -476,17 +536,24 @@ public static class SnowBoarderSetup_Part3
 
     static T EnsureComponent<T>(string goName) where T : Component
     {
-        var existing = Object.FindObjectOfType<T>();
+        var existing = Object.FindAnyObjectByType<T>();
         return existing != null ? existing : new GameObject(goName).AddComponent<T>();
     }
 
     static GameObject EnsureGO(string name)
-        => GameObject.Find(name) ?? new GameObject(name);
+    {
+        var go = GameObject.Find(name);
+        return go != null ? go : new GameObject(name);
+    }
 
     static TComp GetOrAddNamedChild<TComp>(GameObject parent, string childName) where TComp : Component
     {
         var tr = parent.transform.Find(childName);
-        if (tr != null) return tr.GetComponent<TComp>() ?? tr.gameObject.AddComponent<TComp>();
+        if (tr != null)
+        {
+            var comp = tr.GetComponent<TComp>();
+            return comp != null ? comp : tr.gameObject.AddComponent<TComp>();
+        }
         var child = new GameObject(childName);
         child.transform.SetParent(parent.transform, false);
         return child.AddComponent<TComp>();
@@ -529,6 +596,90 @@ public static class SnowBoarderSetup_Part3
         rt.anchoredPosition = pos;
         rt.sizeDelta        = size;
         return go;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // PAUSE PANEL — full-screen overlay with Resume + Main Menu buttons
+    // ─────────────────────────────────────────────────────────────
+    static void BuildPausePanel()
+    {
+        // Dedicated canvas so pause overlay sits above game HUD
+        var cvGO = EnsureGO("Canvas_Pause");
+        var cv   = cvGO.GetComponent<Canvas>() ?? cvGO.AddComponent<Canvas>();
+        cv.renderMode   = RenderMode.ScreenSpaceOverlay;
+        cv.sortingOrder = 100;
+        if (!cvGO.GetComponent<CanvasScaler>())
+        {
+            var cs = cvGO.AddComponent<CanvasScaler>();
+            cs.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            cs.referenceResolution = new Vector2(1920, 1080);
+        }
+        if (!cvGO.GetComponent<GraphicRaycaster>()) cvGO.AddComponent<GraphicRaycaster>();
+
+        var cvTr = cvGO.transform;
+
+        // PausePanel: semi-transparent full-screen overlay
+        var panelTr = cvTr.Find("PausePanel");
+        var panelGO = panelTr != null ? panelTr.gameObject : new GameObject("PausePanel", typeof(RectTransform));
+        panelGO.transform.SetParent(cvTr, false);
+
+        var panelImg = panelGO.GetComponent<Image>() ?? panelGO.AddComponent<Image>();
+        panelImg.color = new Color(0f, 0f, 0f, 0.7f);
+        var panelRT = panelGO.GetComponent<RectTransform>();
+        panelRT.anchorMin = Vector2.zero;
+        panelRT.anchorMax = Vector2.one;
+        panelRT.offsetMin = Vector2.zero;
+        panelRT.offsetMax = Vector2.zero;
+
+        // "PAUSED" title
+        var titleGO  = EnsureTMP(panelGO.transform, "PauseTitle", "PAUSED", 72, new Vector2(0, 150), new Vector2(600, 100));
+        var titleTMP = titleGO.GetComponent<TextMeshProUGUI>();
+        titleTMP.fontStyle = FontStyles.Bold;
+
+        // Buttons
+        var resumeBtn   = EnsureButton(panelGO.transform, "Resume_Btn",   "Resume",    new Vector2(0,  20));
+        var mainMenuBtn = EnsureButton(panelGO.transform, "MainMenu_Btn", "Main Menu", new Vector2(0, -80));
+
+        // PausePanelUI controller — provides the onClick targets
+        var ppUI = panelGO.GetComponent<PausePanelUI>() ?? panelGO.AddComponent<PausePanelUI>();
+        if (resumeBtn.onClick.GetPersistentEventCount() == 0)
+            UnityEventTools.AddPersistentListener(resumeBtn.onClick,   ppUI.Resume);
+        if (mainMenuBtn.onClick.GetPersistentEventCount() == 0)
+            UnityEventTools.AddPersistentListener(mainMenuBtn.onClick, ppUI.GoToMainMenu);
+
+        // Hidden by default — GameManager/PvPGameManager shows it on Escape
+        panelGO.SetActive(false);
+    }
+
+    static Button EnsureButton(Transform parent, string name, string label, Vector2 pos)
+    {
+        var existing = parent.Find(name);
+        if (existing != null) return existing.GetComponent<Button>();
+
+        var btnGO = new GameObject(name, typeof(RectTransform));
+        btnGO.transform.SetParent(parent, false);
+        var img = btnGO.AddComponent<Image>();
+        img.color = new Color(0.15f, 0.15f, 0.15f, 1f);
+        var btn = btnGO.AddComponent<Button>();
+        var rt  = btnGO.GetComponent<RectTransform>();
+        rt.anchoredPosition = pos;
+        rt.sizeDelta        = new Vector2(280, 60);
+
+        // Text label inside button
+        var labelGO = new GameObject("Label", typeof(RectTransform));
+        labelGO.transform.SetParent(btnGO.transform, false);
+        var tmp = labelGO.AddComponent<TextMeshProUGUI>();
+        tmp.text      = label;
+        tmp.fontSize  = 28;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color     = Color.white;
+        var lrt = labelGO.GetComponent<RectTransform>();
+        lrt.anchorMin = Vector2.zero;
+        lrt.anchorMax = Vector2.one;
+        lrt.offsetMin = Vector2.zero;
+        lrt.offsetMax = Vector2.zero;
+
+        return btn;
     }
 
     // Scene-file existence check (avoids errors if Part 2 hasn't run yet)

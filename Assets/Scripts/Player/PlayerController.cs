@@ -14,10 +14,10 @@ public class PlayerController : MonoBehaviour
 
     [Header("Physics")]
     [Tooltip("Torque applied per frame when rotating.")]
-    [SerializeField] private float rotationSpeed = 200f;
+    [SerializeField] private float rotationSpeed = 25f;
 
     [Tooltip("Force applied per frame when thrusting.")]
-    [SerializeField] private float thrustForce = 5f;
+    [SerializeField] private float thrustForce = 15f;
 
     // ── Private ────────────────────────────────────────────────
     private Rigidbody2D _rb;

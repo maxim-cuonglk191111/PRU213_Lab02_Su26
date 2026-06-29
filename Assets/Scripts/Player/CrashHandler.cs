@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Attached to the Boarder_Top child collider.
 /// Detects crash (head contact with Obstacle tag), deducts a life, plays SFX, and respawns.
+/// Sprites flash during invincibility from both crash respawn and external power-up sources.
 /// </summary>
 public class CrashHandler : MonoBehaviour
 {
@@ -28,16 +29,21 @@ public class CrashHandler : MonoBehaviour
     [SerializeField] private float invincibilityDuration = 1.5f;
 
     // ── State ──────────────────────────────────────────────────
-    private bool _isInvincible;
-    private Rigidbody2D _rb;
+    private bool _respawnInvincible;
+    private bool _externalInvincible;
+    private bool IsInvincible => _respawnInvincible || _externalInvincible;
+
+    private Rigidbody2D      _rb;
     private PlayerController _controller;
+    private SpriteRenderer[] _sprites;
+    private Coroutine        _flashCoroutine;
 
     private void Awake()
     {
-        // Walk up to the player root to grab sibling components
         Transform root = transform.root;
         _rb         = root.GetComponent<Rigidbody2D>();
         _controller = root.GetComponent<PlayerController>();
+        _sprites    = root.GetComponentsInChildren<SpriteRenderer>();
 
         if (livesManager == null)
             livesManager = root.GetComponentInChildren<LivesManager>();
@@ -47,46 +53,38 @@ public class CrashHandler : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D col)
     {
-        if (_isInvincible) return;
+        if (IsInvincible) return;
         if (!col.gameObject.CompareTag("Obstacle")) return;
-
         HandleCrash();
     }
 
     // ── Crash Logic ────────────────────────────────────────────
     private void HandleCrash()
     {
-        // Play crash SFX
         if (audioSource != null && crashClip != null)
             audioSource.PlayOneShot(crashClip, 0.8f);
 
-        // Reset trick multiplier
         trickManager?.OnCrash();
 
-        // Deduct a life
         if (livesManager == null) return;
         livesManager.LoseLife();
 
         if (livesManager.CurrentLives > 0)
-        {
             StartCoroutine(RespawnRoutine());
-        }
-        // If lives == 0, LivesManager itself fires the game-over / elimination event
     }
 
     private IEnumerator RespawnRoutine()
     {
-        _isInvincible = true;
+        _respawnInvincible = true;
+        UpdateFlash();
         _controller?.SetInputEnabled(false);
 
-        // Stop physics
         if (_rb != null)
         {
             _rb.linearVelocity  = Vector2.zero;
             _rb.angularVelocity = 0f;
         }
 
-        // Teleport
         Transform root = transform.root;
         if (respawnPoint != null)
             root.position = respawnPoint.position;
@@ -100,12 +98,48 @@ public class CrashHandler : MonoBehaviour
         yield return new WaitForSeconds(0.1f);
         _controller?.SetInputEnabled(true);
 
-        // Grace invincibility
         yield return new WaitForSeconds(invincibilityDuration - 0.1f);
-        _isInvincible = false;
+        _respawnInvincible = false;
+        UpdateFlash();
     }
 
     // ── Public API ─────────────────────────────────────────────
     /// <summary>External systems (PowerUp.cs) can grant temporary invincibility.</summary>
-    public void SetInvincible(bool invincible) => _isInvincible = invincible;
+    public void SetInvincible(bool invincible)
+    {
+        _externalInvincible = invincible;
+        UpdateFlash();
+    }
+
+    // ── Flash ──────────────────────────────────────────────────
+    private void UpdateFlash()
+    {
+        if (IsInvincible)
+        {
+            if (_flashCoroutine == null)
+                _flashCoroutine = StartCoroutine(FlashCoroutine());
+        }
+        else
+        {
+            if (_flashCoroutine != null) { StopCoroutine(_flashCoroutine); _flashCoroutine = null; }
+            SetSpritesVisible(true);
+        }
+    }
+
+    private IEnumerator FlashCoroutine()
+    {
+        bool visible = true;
+        while (true)
+        {
+            visible = !visible;
+            SetSpritesVisible(visible);
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
+
+    private void SetSpritesVisible(bool visible)
+    {
+        foreach (var sr in _sprites)
+            if (sr != null) sr.enabled = visible;
+    }
 }

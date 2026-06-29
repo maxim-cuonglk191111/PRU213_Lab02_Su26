@@ -67,6 +67,7 @@ public static class SnowBoarderSetup_Part2
         var go = new GameObject(text.Replace(" ","_").Replace("\n",""), typeof(RectTransform));
         go.transform.SetParent(parent, false);
         var tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.raycastTarget = false;
         tmp.text     = text;
         tmp.fontSize = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
@@ -85,6 +86,7 @@ public static class SnowBoarderSetup_Part2
         var img = go.AddComponent<Image>();
         img.color = new Color(0.2f, 0.2f, 0.2f, 0.9f);
         var btn  = go.AddComponent<Button>();
+        btn.targetGraphic = img;
         var rt   = go.GetComponent<RectTransform>();
         rt.anchoredPosition = pos;
         rt.sizeDelta        = size;
@@ -209,7 +211,7 @@ public static class SnowBoarderSetup_Part2
 
         // ── Split-screen Cameras ───────────────────────────────
         // Main Camera (left half)
-        var mainCam = GameObject.FindObjectOfType<Camera>();
+        var mainCam = Object.FindAnyObjectByType<Camera>();
         if (mainCam == null)
         {
             var camGO = new GameObject("Main Camera");
@@ -359,7 +361,7 @@ public static class SnowBoarderSetup_Part2
     static void SetSkyBg()
     {
         RenderSettings.skybox = null;
-        Camera.main?.gameObject.GetComponent<Camera>()?.SetTargetBuffers(default, default);
+        Camera.main?.gameObject.GetComponent<Camera>()?.SetTargetBuffers(default(RenderBuffer), default(RenderBuffer));
     }
 
     static void AddCamera()

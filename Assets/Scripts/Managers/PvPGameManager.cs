@@ -119,11 +119,13 @@ public class PvPGameManager : MonoBehaviour
     {
         _paused = true;
         Time.timeScale = 0f;
+        GameObject.Find("PausePanel")?.SetActive(true);
     }
 
-    private void ResumeGame()
+    public void ResumeGame()
     {
         _paused = false;
         Time.timeScale = 1f;
+        GameObject.Find("PausePanel")?.SetActive(false);
     }
 }

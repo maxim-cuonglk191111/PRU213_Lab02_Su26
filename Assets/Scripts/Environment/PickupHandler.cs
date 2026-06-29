@@ -34,7 +34,9 @@ public class PickupHandler : MonoBehaviour
         {
             ps.transform.SetParent(null);
             ps.Play();
-            Destroy(ps.gameObject, ps.main.duration + ps.main.startLifetime.constantMax);
+            // constantMax returns 0 for curve-based lifetimes; .constant is safer, with a 2s minimum
+            float particleTTL = Mathf.Max(ps.main.duration + ps.main.startLifetime.constant, 2f);
+            Destroy(ps.gameObject, particleTTL);
         }
 
         Destroy(gameObject);

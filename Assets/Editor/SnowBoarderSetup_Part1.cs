@@ -90,9 +90,35 @@ public static class SnowBoarderSetup_Part1
         Debug.Log($"[Part1] Created {path}");
     }
 
+    static void EnsureTags()
+    {
+        string[] requiredTags = { "Player2", "Obstacle", "Pickup", "PowerUp" };
+        var asset = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
+        if (asset != null && asset.Length > 0)
+        {
+            var so = new SerializedObject(asset[0]);
+            var tags = so.FindProperty("tags");
+            foreach (var t in requiredTags)
+            {
+                bool found = false;
+                for (int i = 0; i < tags.arraySize; i++)
+                {
+                    if (tags.GetArrayElementAtIndex(i).stringValue == t) { found = true; break; }
+                }
+                if (!found)
+                {
+                    tags.InsertArrayElementAtIndex(tags.arraySize);
+                    tags.GetArrayElementAtIndex(tags.arraySize - 1).stringValue = t;
+                }
+            }
+            so.ApplyModifiedProperties();
+        }
+    }
+
     // ── Prefabs ────────────────────────────────────────────────
     static void CreatePrefabs()
     {
+        EnsureTags();
         CreatePlayerPrefab("Player1", new Color(1f, 1f, 1f, 1f));              // white
         CreatePlayerPrefab("Player2", new Color(1f, 0.42f, 0.208f, 1f));       // #FF6B35 orange
 
@@ -116,10 +142,12 @@ public static class SnowBoarderSetup_Part1
         var rb = root.AddComponent<Rigidbody2D>();
         rb.mass        = 1f;
         rb.angularDamping = 5f;
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous; // Prevent tunneling through ice
 
-        // Capsule collider for body
+        // Capsule collider for body (torso)
         var cc = root.AddComponent<CapsuleCollider2D>();
-        cc.size = new Vector2(0.5f, 0.9f);
+        cc.size = new Vector2(0.4f, 0.6f);
+        cc.offset = new Vector2(0f, 0.1f);
 
         // Controllers
         root.AddComponent<PlayerController>();
@@ -145,6 +173,12 @@ public static class SnowBoarderSetup_Part1
         var botSR = bot.AddComponent<SpriteRenderer>();
         botSR.color = tint;
         botSR.sortingLayerName = "Player";
+        
+        // Snowboard collider (horizontal) for smooth sliding
+        var botCol = bot.AddComponent<CapsuleCollider2D>();
+        botCol.direction = CapsuleDirection2D.Horizontal;
+        botCol.size = new Vector2(1.2f, 0.15f);
+        botCol.offset = new Vector2(0f, -0.05f);
 
         // GroundChecker
         var gc = bot.AddComponent<GroundChecker>();

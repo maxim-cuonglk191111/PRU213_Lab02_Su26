@@ -25,7 +25,11 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private Image[] heartIcons;  // pre-placed in Canvas
 
     [Header("Toast")]
-    [SerializeField] private float toastDuration = 1.5f;
+    [SerializeField] private float toastDuration = 1.5f;  // hold time at full opacity
+    [SerializeField] private float fadeDuration   = 0.2f;
+
+    // ── State ──────────────────────────────────────────────────
+    private Coroutine _toastCoroutine;
 
     // ── Lifecycle ──────────────────────────────────────────────
     private void Awake()
@@ -81,15 +85,35 @@ public class HUDManager : MonoBehaviour
     public void ShowToast(string message)
     {
         if (toastText == null) return;
-        StopAllCoroutines();
-        StartCoroutine(ToastRoutine(message));
+        if (_toastCoroutine != null) StopCoroutine(_toastCoroutine);
+        _toastCoroutine = StartCoroutine(ToastRoutine(message));
     }
 
     private IEnumerator ToastRoutine(string message)
     {
-        toastText.text = message;
+        toastText.text  = message;
+        toastText.alpha = 0f;
         toastText.gameObject.SetActive(true);
+
+        // Fade in
+        for (float t = 0f; t < fadeDuration; t += Time.deltaTime)
+        {
+            toastText.alpha = Mathf.Clamp01(t / fadeDuration);
+            yield return null;
+        }
+        toastText.alpha = 1f;
+
+        // Hold at full opacity
         yield return new WaitForSeconds(toastDuration);
+
+        // Fade out
+        for (float t = 0f; t < fadeDuration; t += Time.deltaTime)
+        {
+            toastText.alpha = Mathf.Clamp01(1f - t / fadeDuration);
+            yield return null;
+        }
+
         toastText.gameObject.SetActive(false);
+        _toastCoroutine = null;
     }
 }
