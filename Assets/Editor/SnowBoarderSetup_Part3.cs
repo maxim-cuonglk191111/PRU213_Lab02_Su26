@@ -441,46 +441,13 @@ public static class SnowBoarderSetup_Part3
             EditorUtility.SetDirty(rb);
         }
 
+        // Add scripts if missing (reference scripts use singletons — no cross-refs to wire)
         if (!pGO.GetComponent<PlayerController>())        pGO.AddComponent<PlayerController>();
-        if (!pGO.GetComponent<ScoreManager>())            pGO.AddComponent<ScoreManager>();
-        if (!pGO.GetComponent<LivesManager>())            pGO.AddComponent<LivesManager>();
         if (!pGO.GetComponent<TrickManager>())            pGO.AddComponent<TrickManager>();
         if (!pGO.GetComponentInChildren<CrashHandler>())  pGO.AddComponent<CrashHandler>();
-        if (!pGO.GetComponentInChildren<GroundChecker>()) pGO.AddComponent<GroundChecker>();
 
-        var pAS = pGO.GetComponent<AudioSource>();
-        if (pAS == null) pAS = pGO.AddComponent<AudioSource>();
-        pAS.playOnAwake = false;
-
-        // playerIndex: 0 = P1 (arrow keys), 1 = P2 (WASD)
-        var ctrl = pGO.GetComponent<PlayerController>();
-        if (ctrl != null)
-        {
-            var so = new SerializedObject(ctrl);
-            so.FindProperty("playerIndex").intValue = (playerTag == "Player") ? 0 : 1;
-            so.ApplyModifiedProperties();
-        }
-
-        var crash = pGO.GetComponentInChildren<CrashHandler>();
-        if (crash != null)
-        {
-            var so = new SerializedObject(crash);
-            SetRef(so, "livesManager", pGO.GetComponent<LivesManager>());
-            SetRef(so, "trickManager", pGO.GetComponent<TrickManager>());
-            SetRef(so, "audioSource",  pAS);
-            SetRef(so, "crashClip",    crashClip);
-            SetRef(so, "respawnPoint", respawn);
-            so.ApplyModifiedProperties();
-        }
-
-        var trick = pGO.GetComponent<TrickManager>();
-        if (trick != null)
-        {
-            var so = new SerializedObject(trick);
-            SetRef(so, "scoreManager", pGO.GetComponent<ScoreManager>());
-            so.ApplyModifiedProperties();
-        }
-
+        // LivesManager is our custom addition for lives/PvP support
+        if (!pGO.GetComponent<LivesManager>())            pGO.AddComponent<LivesManager>();
         var lm = pGO.GetComponent<LivesManager>();
         if (lm != null)
         {
@@ -490,18 +457,25 @@ public static class SnowBoarderSetup_Part3
         }
     }
 
-    static void WireAudioManager(AudioManager mgr, AudioClip bgmClip)
+    static void WireAudioManager(AudioManager mgr, AudioClip clip)
     {
-        var go       = mgr.gameObject;
-        var musicSrc = GetOrAddNamedChild<AudioSource>(go, "MusicSource");
-        var sfxSrc   = GetOrAddNamedChild<AudioSource>(go, "SFXSource");
-        musicSrc.playOnAwake = false;
-        sfxSrc.playOnAwake   = false;
+        var go      = mgr.gameObject;
+        var bgmSrc  = GetOrAddNamedChild<AudioSource>(go, "BGMSource");
+        var sfxSrc  = GetOrAddNamedChild<AudioSource>(go, "SFXSource");
+        var legacyMusicSrc = GetOrAddNamedChild<AudioSource>(go, "MusicSource");
+        bgmSrc.playOnAwake         = false;
+        sfxSrc.playOnAwake         = false;
+        legacyMusicSrc.playOnAwake = false;
 
         var so = new SerializedObject(mgr);
-        SetRef(so, "musicSource", musicSrc);
+        SetRef(so, "bgmSource",   bgmSrc);
         SetRef(so, "sfxSource",   sfxSrc);
-        SetRef(so, "bgmClip",     bgmClip);
+        SetRef(so, "musicSource", legacyMusicSrc);
+        // Wire the BGM clip to all level slots so our single bgm_snow.ogg plays everywhere
+        SetRef(so, "menuBGM",   clip);
+        SetRef(so, "level1BGM", clip);
+        SetRef(so, "level2BGM", clip);
+        SetRef(so, "level3BGM", clip);
         so.ApplyModifiedProperties();
     }
 

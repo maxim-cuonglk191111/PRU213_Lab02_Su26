@@ -1,37 +1,61 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
-[RequireComponent(typeof(Collider2D))]
 public class FinishLine : MonoBehaviour
 {
-    [Header("Audio")]
-    [SerializeField] private AudioSource audioSource;
-    [SerializeField] private AudioClip   finishClip;
+    [Header("Finish Settings")]
+    public int finishBonus = 1000;
+    public ParticleSystem finishParticles;
+    public AudioClip finishSound;
+    public Color triggerColor = new Color(1f, 1f, 1f, 0.3f);
 
     [Header("Mode")]
-    [SerializeField] private bool isPvP = false;
+    public bool isPvP = false;
 
-    bool triggered;
+    bool hasFinished = false;
+    SpriteRenderer spriteRenderer;
+
+    void Start()
+    {
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null && triggerColor.a > 0f)
+        {
+            spriteRenderer.color = triggerColor;
+        }
+    }
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (triggered) return;
-
         bool isP1 = other.CompareTag("Player");
         bool isP2 = other.CompareTag("Player2");
+
         if (!isP1 && !isP2) return;
+        if (hasFinished) return;
 
-        triggered = true;
+        hasFinished = true;
 
-        // Stop the player
-        var pc = other.GetComponentInParent<PlayerController>() ?? other.GetComponent<PlayerController>();
-        pc?.SetFinished();
+        PlayerController pc = other.GetComponent<PlayerController>();
+        if (pc == null) pc = other.GetComponentInParent<PlayerController>();
+        if (pc != null) pc.SetFinished();
 
-        // Play finish SFX
-        if (audioSource != null && finishClip != null)
-            audioSource.PlayOneShot(finishClip);
-        else
-            AudioManager.Instance?.PlayFinishSound();
+        if (finishParticles != null)
+            finishParticles.Play();
+
+        if (finishSound != null)
+        {
+            AudioSource audioSource = GetComponent<AudioSource>();
+            if (audioSource != null)
+            {
+                audioSource.PlayOneShot(finishSound);
+            }
+            else if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.sfxSource.PlayOneShot(finishSound);
+            }
+        }
+        else if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayFinishSound();
+        }
 
         if (isPvP)
         {
@@ -39,25 +63,21 @@ public class FinishLine : MonoBehaviour
         }
         else
         {
-            var sm = other.GetComponentInParent<ScoreManager>() ?? other.GetComponent<ScoreManager>();
-            if (sm != null)
-            {
-                PlayerPrefs.SetInt("LastScore", sm.CurrentScore);
-                PlayerPrefs.SetInt("TotalRuns", PlayerPrefs.GetInt("TotalRuns", 0) + 1);
-                PlayerPrefs.Save();
-            }
+            if (ScoreManager.Instance != null)
+                ScoreManager.Instance.AddScore(finishBonus);
 
-            if (GameManager.Instance != null)
-                Invoke(nameof(TriggerFinish), 0.5f);
-            else
-            {
-                Time.timeScale = 0f;
-                SceneManager.LoadScene("ScoreSummary");
-            }
+            Invoke(nameof(TriggerFinish), 1f);
         }
     }
 
-    void TriggerFinish() => GameManager.Instance?.LevelComplete();
+    void TriggerFinish()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.LevelComplete(false);
+    }
 
-    void OnEnable() { triggered = false; }
+    void OnEnable()
+    {
+        hasFinished = false;
+    }
 }

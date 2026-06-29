@@ -1,55 +1,155 @@
-using System;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using System;
 
-/// <summary>
-/// Non-singleton score tracker — one instance per player.
-/// Score = Σ(base_points × current_multiplier).
-/// </summary>
 public class ScoreManager : MonoBehaviour
 {
-    // ── Events ─────────────────────────────────────────────────
-    /// <summary>Fired whenever the score changes. Passes the new score.</summary>
-    public event Action<int> OnScoreChanged;
+    public static ScoreManager Instance { get; private set; }
 
-    // ── State ──────────────────────────────────────────────────
-    public int CurrentScore  { get; private set; }
-    public int CurrentMultiplier { get; private set; } = 1;
+    public int CurrentScore { get; private set; }
+    public Action<int> OnScoreUpdated;
+    public event Action<int> OnScoreChanged; // alias kept for HUDManager compatibility
 
-    private const int MultiplierCap = 4;
+    Rigidbody2D playerRb;
 
-    // ── Public API ─────────────────────────────────────────────
-    /// <summary>Add base points multiplied by the current multiplier.</summary>
-    public void AddScore(int basePoints)
+    [Header("Level1 Settings")]
+    [SerializeField] TextMeshProUGUI scoreTextHUD;
+
+    [Header("MainMenu Settings")]
+    public float pointsPerSecond = 10f;
+    public float speedBonusThreshold = 15f;
+    public float speedBonusMultiplier = 2f;
+    public float maxComboTimer = 3f;
+    public float comboResetTime = 3f;
+    public int maxCombo = 10;
+    public float comboMultiplierGrowth = 0.5f;
+    public TextMeshProUGUI scoreTextMenu;
+    public TextMeshProUGUI comboTextMenu;
+    public TextMeshProUGUI multiplierTextMenu;
+
+    int currentCombo = 1;
+    float comboTimer = 0f;
+    float speedBonusAccumulator = 0f;
+
+    // HUDManager reads this for the multiplier display
+    public int CurrentMultiplier => currentCombo;
+
+    void Awake()
     {
-        CurrentScore += basePoints * CurrentMultiplier;
-        OnScoreChanged?.Invoke(CurrentScore);
+        if (Instance == null)
+        {
+            Instance = this;
+            transform.SetParent(null);
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
-    /// <summary>Increment multiplier by 1 (capped at ×4).</summary>
-    public void IncrementMultiplier()
+    void Start()
     {
-        CurrentMultiplier = Mathf.Min(CurrentMultiplier + 1, MultiplierCap);
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            playerRb = player.GetComponent<Rigidbody2D>();
+        }
     }
 
-    /// <summary>Reset multiplier to ×1 (called on crash).</summary>
-    public void ResetMultiplier()
+    void Update()
     {
-        CurrentMultiplier = 1;
+        if (GameManager.Instance != null && GameManager.Instance.State == GameManager.GameState.Playing)
+        {
+            if (playerRb == null)
+            {
+                GameObject player = GameObject.FindGameObjectWithTag("Player");
+                if (player != null)
+                {
+                    playerRb = player.GetComponent<Rigidbody2D>();
+                }
+            }
+
+            if (comboTimer > 0f)
+            {
+                comboTimer -= Time.deltaTime;
+                if (comboTimer <= 0f)
+                {
+                    currentCombo = 1;
+                    FireScoreEvent();
+                }
+            }
+
+            float pointsThisFrame = pointsPerSecond * Time.deltaTime;
+            if (playerRb != null && playerRb.linearVelocity.magnitude > speedBonusThreshold)
+            {
+                pointsThisFrame *= speedBonusMultiplier;
+            }
+
+            pointsThisFrame *= currentCombo;
+            speedBonusAccumulator += pointsThisFrame;
+
+            if (speedBonusAccumulator >= 1f)
+            {
+                int toAdd = Mathf.FloorToInt(speedBonusAccumulator);
+                CurrentScore += toAdd;
+                speedBonusAccumulator -= toAdd;
+                FireScoreEvent();
+            }
+        }
     }
 
-    /// <summary>Add trick points and bump the multiplier (called by TrickManager).</summary>
+    public void AddScore(int amount)
+    {
+        CurrentScore += amount;
+        FireScoreEvent();
+    }
+
+    public void IncrementComboMultiplier()
+    {
+        currentCombo = Mathf.Min(currentCombo + 1, maxCombo);
+        comboTimer = maxComboTimer;
+        FireScoreEvent();
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowFloatingText($"x{currentCombo} COMBO!", Vector3.zero);
+        }
+    }
+
     public void AddTrickScore(int basePoints, int multiplier)
     {
-        CurrentScore += basePoints * multiplier;
-        CurrentMultiplier = Mathf.Min(CurrentMultiplier + 1, MultiplierCap);
+        int totalTrickScore = basePoints * multiplier;
+        CurrentScore += totalTrickScore;
+        currentCombo = Mathf.Min(currentCombo + 1, maxCombo);
+        comboTimer = maxComboTimer;
+
+        FireScoreEvent();
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowFloatingText($"x{currentCombo} COMBO!", Vector3.zero);
+        }
+    }
+
+    public void ResetScore()
+    {
+        CurrentScore = 0;
+        currentCombo = 1;
+        comboTimer = 0f;
+        speedBonusAccumulator = 0f;
+        FireScoreEvent();
+    }
+
+    void FireScoreEvent()
+    {
+        OnScoreUpdated?.Invoke(CurrentScore);
         OnScoreChanged?.Invoke(CurrentScore);
     }
 
-    /// <summary>Reset score and multiplier to zero/one.</summary>
-    public void ResetScore()
+    void OnEnable()
     {
-        CurrentScore      = 0;
-        CurrentMultiplier = 1;
-        OnScoreChanged?.Invoke(CurrentScore);
+        CurrentScore = 0;
     }
 }
