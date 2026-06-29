@@ -106,10 +106,22 @@ public static class SnowBoarderSetup_Part2
         var cv   = MakeCanvas();
         var cvTr = cv.transform;
 
-        MakeTMP(cvTr, "Snow Boarder", 72, new Vector2(0, 250), new Vector2(800, 120));
-        MakeButton(cvTr, "Start",   new Vector2(0,  80));
-        MakeButton(cvTr, "Options", new Vector2(0,   0));
-        MakeButton(cvTr, "Quit",    new Vector2(0, -80));
+        MakeTMP(cvTr, "Snow Boarder", 72, new Vector2(0, 260), new Vector2(800, 120));
+        MakeButton(cvTr, "Start",      new Vector2(0,  90));
+        MakeButton(cvTr, "HowToPlay",  new Vector2(0,  10));
+        MakeButton(cvTr, "Options",    new Vector2(0, -70));
+        MakeButton(cvTr, "Quit",       new Vector2(0,-150));
+
+        // Guide panel — controls reference, inspired by reference project's guide screen
+        var guidePanel = MakePanel(cvTr, "GuidePanel", new Color(0.05f,0.05f,0.1f,0.96f), Vector2.zero, new Vector2(700,420));
+        guidePanel.SetActive(false);
+        MakeTMP(guidePanel.transform, "How to Play",    28, new Vector2(0,  160), new Vector2(600, 50)).GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+        MakeTMP(guidePanel.transform, "← → Arrow Keys: Rotate",    22, new Vector2(0,  90), new Vector2(600, 40));
+        MakeTMP(guidePanel.transform, "Hold direction to accelerate", 20, new Vector2(0,  40), new Vector2(600, 40));
+        MakeTMP(guidePanel.transform, "Collect snowflakes for bonus score", 20, new Vector2(0, -10), new Vector2(620, 40));
+        MakeTMP(guidePanel.transform, "Avoid crashing into obstacles",      20, new Vector2(0, -60), new Vector2(620, 40));
+        MakeTMP(guidePanel.transform, "PvP: P1 = Arrow Keys | P2 = WASD",  20, new Vector2(0,-110), new Vector2(640, 40));
+        MakeButton(guidePanel.transform, "Close", new Vector2(0,-175), new Vector2(180, 50));
 
         var optPanel = MakePanel(cvTr, "OptionsPanel", new Color(0.1f,0.1f,0.1f,0.95f), Vector2.zero, new Vector2(500,300));
         optPanel.SetActive(false);
@@ -146,11 +158,13 @@ public static class SnowBoarderSetup_Part2
         var scene = NewScene("ScoreSummary");
         SetSkyBg();
         var cvTr = MakeCanvas().transform;
-        MakeTMP(cvTr, "Run Complete!",  52, new Vector2(0, 200), new Vector2(700, 100));
-        MakeTMP(cvTr, "Your Score: 0", 36, new Vector2(0,  80), new Vector2(600,  70));
-        MakeTMP(cvTr, "Best Score: 0", 36, new Vector2(0,   0), new Vector2(600,  70));
-        MakeButton(cvTr, "Replay",    new Vector2(-180, -120));
-        MakeButton(cvTr, "Main Menu", new Vector2( 180, -120));
+        MakeTMP(cvTr, "Run Complete!",  52, new Vector2(0,  240), new Vector2(700, 100));
+        MakeTMP(cvTr, "Your Score: 0", 36, new Vector2(0,  130), new Vector2(600,  70));
+        MakeTMP(cvTr, "Best Score: 0", 28, new Vector2(0,   60), new Vector2(600,  60));
+        MakeTMP(cvTr, "Time: 00:00",   26, new Vector2(-150, -10), new Vector2(280,  55));
+        MakeTMP(cvTr, "Distance: 0m",  26, new Vector2( 150, -10), new Vector2(280,  55));
+        MakeButton(cvTr, "Replay",    new Vector2(-180, -130));
+        MakeButton(cvTr, "Main Menu", new Vector2( 180, -130));
         new GameObject("ScoreSummaryManager").AddComponent<ScoreSummaryManager>();
         AddCamera();
         SaveScene(scene, "ScoreSummary");

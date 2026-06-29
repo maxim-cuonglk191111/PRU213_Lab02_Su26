@@ -68,10 +68,12 @@ public static class SnowBoarderSetup_Part3
         if (mmm != null)
         {
             var so = new SerializedObject(mmm);
-            SetRef(so, "startButton",   FindBtn("Start_Btn"));
-            SetRef(so, "optionsButton", FindBtn("Options_Btn"));
-            SetRef(so, "quitButton",    FindBtn("Quit_Btn"));
-            SetRef(so, "optionsPanel",  GameObject.Find("OptionsPanel"));
+            SetRef(so, "startButton",     FindBtn("Start_Btn"));
+            SetRef(so, "howToPlayButton", FindBtn("HowToPlay_Btn"));
+            SetRef(so, "optionsButton",   FindBtn("Options_Btn"));
+            SetRef(so, "quitButton",      FindBtn("Quit_Btn"));
+            SetRef(so, "guidePanel",      GameObject.Find("GuidePanel"));
+            SetRef(so, "optionsPanel",    GameObject.Find("OptionsPanel"));
             so.ApplyModifiedProperties();
         }
 
@@ -109,8 +111,10 @@ public static class SnowBoarderSetup_Part3
             var so = new SerializedObject(mgr);
             SetRef(so, "currentScoreText", FindTMP("Your_Score:_0"));
             SetRef(so, "bestScoreText",    FindTMP("Best_Score:_0"));
+            SetRef(so, "timeText",         FindTMP("Time:_00:00"));
+            SetRef(so, "distanceText",     FindTMP("Distance:_0m"));
             SetRef(so, "replayButton",     FindBtn("Replay_Btn"));
-            SetRef(so, "mainMenuButton",   FindBtn("Main Menu_Btn"));
+            SetRef(so, "mainMenuButton",   FindBtn("Main_Menu_Btn"));
             so.ApplyModifiedProperties();
         }
 
@@ -340,7 +344,9 @@ public static class SnowBoarderSetup_Part3
         var cvTr = cvGO.transform;
 
         var scoreGO = EnsureTMP(cvTr, "ScoreText",     "Score: 0", 24, new Vector2(-750,  480), new Vector2(300, 50));
-        var speedGO = EnsureTMP(cvTr, "SpeedText",      "0 km/h",  24, new Vector2(   0,  480), new Vector2(200, 50));
+        var speedGO = EnsureTMP(cvTr, "SpeedText",      "0 km/h",  24, new Vector2(-450,  480), new Vector2(200, 50));
+        var timerGO = EnsureTMP(cvTr, "TimerText",     "00:00",    24, new Vector2( 400,  480), new Vector2(150, 50));
+        var distGO  = EnsureTMP(cvTr, "DistText",      "0m",       24, new Vector2( 600,  480), new Vector2(150, 50));
         var multGO  = EnsureTMP(cvTr, "MultiplierText", "×1",      24, new Vector2(-800, -460), new Vector2(150, 50));
         var toastGO = EnsureTMP(cvTr, "ToastText",      "",        36, new Vector2(   0,  100), new Vector2(600, 70));
         toastGO.SetActive(false);
@@ -373,6 +379,8 @@ public static class SnowBoarderSetup_Part3
         SetRef(hudSO, "playerRb",       player.GetComponent<Rigidbody2D>());
         SetRef(hudSO, "scoreText",      scoreGO.GetComponent<TextMeshProUGUI>());
         SetRef(hudSO, "speedText",      speedGO.GetComponent<TextMeshProUGUI>());
+        SetRef(hudSO, "timerText",      timerGO.GetComponent<TextMeshProUGUI>());
+        SetRef(hudSO, "distText",       distGO.GetComponent<TextMeshProUGUI>());
         SetRef(hudSO, "multiplierText", multGO.GetComponent<TextMeshProUGUI>());
         SetRef(hudSO, "toastText",      toastGO.GetComponent<TextMeshProUGUI>());
         var heartsArr = hudSO.FindProperty("heartIcons");

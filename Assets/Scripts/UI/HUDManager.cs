@@ -15,6 +15,8 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI speedText;
     [SerializeField] private TextMeshProUGUI multiplierText;
     [SerializeField] private TextMeshProUGUI toastText;
+    [SerializeField] private TextMeshProUGUI timerText;
+    [SerializeField] private TextMeshProUGUI distText;
 
     [Header("Lives Icons")]
     [SerializeField] private Image[] heartIcons;
@@ -24,10 +26,21 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private float fadeDuration   = 0.2f;
 
     private Coroutine _toastCoroutine;
+    private float _startXPos;
 
     private void Awake()
     {
         if (toastText != null) toastText.gameObject.SetActive(false);
+    }
+
+    private void Start()
+    {
+        if (playerRb == null)
+        {
+            var p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) playerRb = p.GetComponent<Rigidbody2D>();
+        }
+        _startXPos = playerRb != null ? playerRb.position.x : 0f;
     }
 
     private void OnEnable()
@@ -46,6 +59,8 @@ public class HUDManager : MonoBehaviour
     {
         UpdateSpeed();
         UpdateMultiplier();
+        UpdateTimer();
+        UpdateDistance();
     }
 
     private void UpdateScore(int score)
@@ -64,6 +79,21 @@ public class HUDManager : MonoBehaviour
     {
         if (multiplierText == null || scoreManager == null) return;
         multiplierText.text = $"×{scoreManager.CurrentMultiplier}";
+    }
+
+    private void UpdateTimer()
+    {
+        if (timerText == null) return;
+        if (GameManager.Instance != null && GameManager.Instance.State != GameManager.GameState.Playing) return;
+        float t = Time.timeSinceLevelLoad;
+        timerText.text = $"{Mathf.FloorToInt(t / 60f):00}:{Mathf.FloorToInt(t % 60f):00}";
+    }
+
+    private void UpdateDistance()
+    {
+        if (distText == null || playerRb == null) return;
+        float dist = Mathf.Max(0f, playerRb.position.x - _startXPos);
+        distText.text = $"{Mathf.RoundToInt(dist)}m";
     }
 
     private void UpdateLives(int lives)

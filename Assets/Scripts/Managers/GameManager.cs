@@ -284,8 +284,10 @@ public class GameManager : MonoBehaviour
         {
             PlayerPrefs.SetInt("LastScore", ScoreManager.Instance.CurrentScore);
             PlayerPrefs.SetInt("TotalRuns", PlayerPrefs.GetInt("TotalRuns", 0) + 1);
-            PlayerPrefs.Save();
         }
+        PlayerPrefs.SetFloat("LastTime", Time.timeSinceLevelLoad);
+        if (playerRb != null) PlayerPrefs.SetInt("LastDistance", Mathf.Max(0, Mathf.RoundToInt(playerRb.position.x - startXPos)));
+        PlayerPrefs.Save();
 
         if (UIManager.Instance != null)
             UIManager.Instance.ShowGameOverPanel();
@@ -305,8 +307,10 @@ public class GameManager : MonoBehaviour
         {
             PlayerPrefs.SetInt("LastScore", ScoreManager.Instance.CurrentScore);
             PlayerPrefs.SetInt("TotalRuns", PlayerPrefs.GetInt("TotalRuns", 0) + 1);
-            PlayerPrefs.Save();
         }
+        PlayerPrefs.SetFloat("LastTime", Time.timeSinceLevelLoad);
+        if (playerRb != null) PlayerPrefs.SetInt("LastDistance", Mathf.Max(0, Mathf.RoundToInt(playerRb.position.x - startXPos)));
+        PlayerPrefs.Save();
 
         if (UIManager.Instance != null)
             UIManager.Instance.ShowLevelCompletePanel();

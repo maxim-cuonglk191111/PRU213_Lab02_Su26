@@ -4,16 +4,13 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// Solo Score Summary scene controller.
-/// Reads score from PlayerPrefs "LastScore"; updates HighScore if beaten.
-/// Self-heals: auto-finds buttons/text by name if Inspector references are null.
-/// </summary>
 public class ScoreSummaryManager : MonoBehaviour
 {
     [Header("Text")]
     [SerializeField] private TextMeshProUGUI currentScoreText;
     [SerializeField] private TextMeshProUGUI bestScoreText;
+    [SerializeField] private TextMeshProUGUI timeText;
+    [SerializeField] private TextMeshProUGUI distanceText;
 
     [Header("Buttons")]
     [SerializeField] private Button replayButton;
@@ -24,9 +21,10 @@ public class ScoreSummaryManager : MonoBehaviour
         EnsureEventSystem();
         Time.timeScale = 1f;
 
-        // Auto-find if Inspector refs missing
         if (currentScoreText == null) currentScoreText = FindTMP("Your_Score:_0");
         if (bestScoreText    == null) bestScoreText    = FindTMP("Best_Score:_0");
+        if (timeText         == null) timeText         = FindTMP("Time:_00:00");
+        if (distanceText     == null) distanceText     = FindTMP("Distance:_0m");
         if (replayButton     == null) replayButton     = FindBtn("Replay_Btn");
         if (mainMenuButton   == null) mainMenuButton   = FindBtn("Main_Menu_Btn");
 
@@ -40,8 +38,16 @@ public class ScoreSummaryManager : MonoBehaviour
             PlayerPrefs.Save();
         }
 
-        if (currentScoreText != null) currentScoreText.text = $"Your Score: {current}";
-        if (bestScoreText    != null) bestScoreText.text    = $"Best Score: {best}";
+        if (currentScoreText != null) currentScoreText.text = $"Score: {current}";
+        if (bestScoreText    != null) bestScoreText.text    = $"Best: {best}";
+
+        float elapsed = PlayerPrefs.GetFloat("LastTime", 0f);
+        int min = Mathf.FloorToInt(elapsed / 60f);
+        int sec = Mathf.FloorToInt(elapsed % 60f);
+        if (timeText != null) timeText.text = $"Time: {min:00}:{sec:00}";
+
+        int dist = PlayerPrefs.GetInt("LastDistance", 0);
+        if (distanceText != null) distanceText.text = $"Distance: {dist}m";
 
         if (replayButton   != null) replayButton.onClick.AddListener(()   => SceneManager.LoadScene("Level1"));
         if (mainMenuButton != null) mainMenuButton.onClick.AddListener(() => SceneManager.LoadScene("MainMenu"));
