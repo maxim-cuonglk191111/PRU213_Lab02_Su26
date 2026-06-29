@@ -1,11 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Placed on the finish-line trigger collider.
-/// Solo mode: loads ScoreSummary.
-/// PvP mode: notifies PvPGameManager of the winning player.
-/// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class FinishLine : MonoBehaviour
 {
@@ -16,39 +11,53 @@ public class FinishLine : MonoBehaviour
     [Header("Mode")]
     [SerializeField] private bool isPvP = false;
 
-    private bool _triggered;
+    bool triggered;
 
-    private void OnTriggerEnter2D(Collider2D other)
+    void OnTriggerEnter2D(Collider2D other)
     {
-        if (_triggered) return;
+        if (triggered) return;
 
-        bool isPlayer  = other.CompareTag("Player");
-        bool isPlayer2 = other.CompareTag("Player2");
+        bool isP1 = other.CompareTag("Player");
+        bool isP2 = other.CompareTag("Player2");
+        if (!isP1 && !isP2) return;
 
-        if (!isPlayer && !isPlayer2) return;
+        triggered = true;
 
-        _triggered = true;
+        // Stop the player
+        var pc = other.GetComponentInParent<PlayerController>() ?? other.GetComponent<PlayerController>();
+        pc?.SetFinished();
 
         // Play finish SFX
         if (audioSource != null && finishClip != null)
-            audioSource.PlayOneShot(finishClip, 1.0f);
+            audioSource.PlayOneShot(finishClip);
+        else
+            AudioManager.Instance?.PlayFinishSound();
 
         if (isPvP)
         {
-            string tag = isPlayer ? "Player" : "Player2";
-            PvPGameManager.Instance?.OnFinishLineCrossed(tag);
+            PvPGameManager.Instance?.OnFinishLineCrossed(isP1 ? "Player" : "Player2");
         }
         else
         {
-            // Save score for summary screen
-            var scoreManager = other.GetComponentInParent<ScoreManager>();
-            if (scoreManager != null)
-                PlayerPrefs.SetInt("LastScore", scoreManager.CurrentScore);
-            PlayerPrefs.SetInt("TotalRuns", PlayerPrefs.GetInt("TotalRuns", 0) + 1);
-            PlayerPrefs.Save();
+            var sm = other.GetComponentInParent<ScoreManager>() ?? other.GetComponent<ScoreManager>();
+            if (sm != null)
+            {
+                PlayerPrefs.SetInt("LastScore", sm.CurrentScore);
+                PlayerPrefs.SetInt("TotalRuns", PlayerPrefs.GetInt("TotalRuns", 0) + 1);
+                PlayerPrefs.Save();
+            }
 
-            Time.timeScale = 0f;
-            SceneManager.LoadScene("ScoreSummary");
+            if (GameManager.Instance != null)
+                Invoke(nameof(TriggerFinish), 0.5f);
+            else
+            {
+                Time.timeScale = 0f;
+                SceneManager.LoadScene("ScoreSummary");
+            }
         }
     }
+
+    void TriggerFinish() => GameManager.Instance?.LevelComplete();
+
+    void OnEnable() { triggered = false; }
 }

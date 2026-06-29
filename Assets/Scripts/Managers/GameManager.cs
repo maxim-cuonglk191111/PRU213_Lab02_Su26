@@ -68,10 +68,26 @@ public class GameManager : MonoBehaviour
         SetPausePanel(false);
     }
 
+    public void PlayerCrashed() => GameOver();
+
+    public void LevelComplete(bool playSFX = true)
+    {
+        State = GameState.GameOver;
+        Time.timeScale = 0f;
+        SaveScore();
+        SceneManager.LoadScene("ScoreSummary");
+    }
+
     public void GameOver()
     {
         State = GameState.GameOver;
         Time.timeScale = 0f;
+        SaveScore();
+        SceneManager.LoadScene("ScoreSummary");
+    }
+
+    private void SaveScore()
+    {
         var sm = Object.FindAnyObjectByType<ScoreManager>();
         if (sm != null)
         {
@@ -79,7 +95,6 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.SetInt("TotalRuns", PlayerPrefs.GetInt("TotalRuns", 0) + 1);
             PlayerPrefs.Save();
         }
-        SceneManager.LoadScene("ScoreSummary");
     }
 
     private void Update()

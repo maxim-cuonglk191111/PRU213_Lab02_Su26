@@ -37,10 +37,18 @@ public class ScoreManager : MonoBehaviour
         CurrentMultiplier = 1;
     }
 
+    /// <summary>Add trick points and bump the multiplier (called by TrickManager).</summary>
+    public void AddTrickScore(int basePoints, int multiplier)
+    {
+        CurrentScore += basePoints * multiplier;
+        CurrentMultiplier = Mathf.Min(CurrentMultiplier + 1, MultiplierCap);
+        OnScoreChanged?.Invoke(CurrentScore);
+    }
+
     /// <summary>Reset score and multiplier to zero/one.</summary>
     public void ResetScore()
     {
-        CurrentScore     = 0;
+        CurrentScore      = 0;
         CurrentMultiplier = 1;
         OnScoreChanged?.Invoke(CurrentScore);
     }

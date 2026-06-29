@@ -6,150 +6,151 @@ public class CrashHandler : MonoBehaviour
     [Header("References")]
     [SerializeField] private LivesManager livesManager;
     [SerializeField] private TrickManager trickManager;
-    [SerializeField] private AudioSource audioSource;
-    [SerializeField] private AudioClip crashClip;
+    [SerializeField] private AudioSource  audioSource;
+    [SerializeField] private AudioClip    crashClip;
 
     [Header("Respawn")]
     [SerializeField] private Transform respawnPoint;
-    [SerializeField] private float invincibilityDuration = 1.5f;
-
-    [Header("Upside-Down Detection")]
-    [SerializeField] private float flipDeathAngle = 130f;
-    [SerializeField] private float flipDeathDelay = 0.5f;
+    [SerializeField] private float     respawnDelay = 1f;
 
     [Header("Out-of-Bounds")]
     [SerializeField] private float killBelowY = -20f;
 
-    private bool _respawnInvincible;
-    private bool _externalInvincible;
-    private bool IsInvincible => _respawnInvincible || _externalInvincible;
+    bool             hasCrashed;
+    bool             externalInvincible;
+    Coroutine        flashCoroutine;
+    PlayerController playerController;
+    SpriteRenderer[] sprites;
 
-    private Rigidbody2D      _rb;
-    private PlayerController _controller;
-    private SpriteRenderer[] _sprites;
-    private Coroutine        _flashCoroutine;
-    private float            _flipTimer;
-
-    private void Awake()
+    void Awake()
     {
         Transform root = transform.root;
-        _rb         = root.GetComponent<Rigidbody2D>();
-        _controller = root.GetComponent<PlayerController>();
-        _sprites    = root.GetComponentsInChildren<SpriteRenderer>();
+        playerController = root.GetComponent<PlayerController>();
+        sprites          = root.GetComponentsInChildren<SpriteRenderer>();
 
         if (livesManager == null) livesManager = root.GetComponentInChildren<LivesManager>();
         if (trickManager == null) trickManager = root.GetComponentInChildren<TrickManager>();
     }
 
-    private void Update()
+    void Update()
     {
-        if (IsInvincible) { _flipTimer = 0f; return; }
-
-        Transform root = transform.root;
-
-        if (root.position.y < killBelowY)
-        {
+        if (hasCrashed || externalInvincible) return;
+        if (transform.root.position.y < killBelowY)
             HandleCrash();
-            return;
-        }
+    }
 
-        float angle    = root.eulerAngles.z;
-        bool  inverted = angle > flipDeathAngle && angle < 360f - flipDeathAngle;
+    // Head trigger collider hits terrain tagged "Ground" → crash
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Ground") || other.CompareTag("Obstacle"))
+            HandleCrash();
+    }
 
-        if (inverted)
+    // Board (CircleCollider2D on root) hits terrain
+    void OnCollisionEnter2D(Collision2D col)
+    {
+        if (col.collider.GetType() == typeof(CircleCollider2D) &&
+            (col.gameObject.CompareTag("Ground") || col.gameObject.CompareTag("Obstacle")))
+            HandleCrash();
+    }
+
+    public void SetInvincible(bool value)
+    {
+        externalInvincible = value;
+        if (value)
         {
-            _flipTimer += Time.deltaTime;
-            if (_flipTimer >= flipDeathDelay) HandleCrash();
+            if (flashCoroutine == null) flashCoroutine = StartCoroutine(ExternalInvincibilityFlash());
         }
         else
         {
-            _flipTimer = 0f;
+            if (flashCoroutine != null) { StopCoroutine(flashCoroutine); flashCoroutine = null; }
+            foreach (var sr in sprites) if (sr != null) sr.enabled = true;
         }
     }
 
-    private void OnCollisionEnter2D(Collision2D col)
+    IEnumerator ExternalInvincibilityFlash()
     {
-        if (IsInvincible) return;
-        if (!col.gameObject.CompareTag("Obstacle")) return;
-        HandleCrash();
+        bool visible = true;
+        while (externalInvincible)
+        {
+            visible = !visible;
+            foreach (var sr in sprites) if (sr != null) sr.enabled = visible;
+            yield return new WaitForSeconds(0.15f);
+        }
+        foreach (var sr in sprites) if (sr != null) sr.enabled = true;
+        flashCoroutine = null;
     }
 
-    private void HandleCrash()
+    void HandleCrash()
     {
-        _flipTimer         = 0f;
-        _respawnInvincible = true;
-        UpdateFlash();
+        if (hasCrashed || externalInvincible) return;
+        hasCrashed = true;
+
+        playerController?.DisableControls();
 
         if (audioSource != null && crashClip != null)
             audioSource.PlayOneShot(crashClip, 0.8f);
+        else
+            AudioManager.Instance?.PlayCrashSound();
 
         trickManager?.OnCrash();
 
-        if (livesManager == null) return;
-        livesManager.LoseLife();
-
-        if (livesManager.CurrentLives > 0)
-            StartCoroutine(RespawnRoutine());
+        if (livesManager != null)
+        {
+            livesManager.LoseLife();
+            if (livesManager.CurrentLives > 0)
+                StartCoroutine(RespawnRoutine());
+            else
+                Invoke(nameof(NotifyGameOver), respawnDelay);
+        }
+        else
+        {
+            Invoke(nameof(NotifyGameOver), respawnDelay);
+        }
     }
 
-    private IEnumerator RespawnRoutine()
+    IEnumerator RespawnRoutine()
     {
-        _controller?.SetInputEnabled(false);
-
-        if (_rb != null)
-        {
-            _rb.linearVelocity  = Vector2.zero;
-            _rb.angularVelocity = 0f;
-        }
-
         Transform root = transform.root;
+        var rb = root.GetComponent<Rigidbody2D>();
+        if (rb != null) { rb.linearVelocity = Vector2.zero; rb.angularVelocity = 0f; }
+
+        yield return new WaitForSeconds(respawnDelay);
+
         if (respawnPoint != null)
             root.SetPositionAndRotation(respawnPoint.position, Quaternion.identity);
-        else
-            root.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
 
-        yield return new WaitForSeconds(0.1f);
-        _controller?.SetInputEnabled(true);
+        if (rb != null) { rb.linearVelocity = Vector2.zero; rb.angularVelocity = 0f; }
 
-        yield return new WaitForSeconds(invincibilityDuration - 0.1f);
-        _respawnInvincible = false;
-        UpdateFlash();
+        playerController?.EnableControls();
+        StartCoroutine(InvincibilityFlash(1.5f));
+        hasCrashed = false;
     }
 
-    public void SetInvincible(bool invincible)
+    IEnumerator InvincibilityFlash(float duration)
     {
-        _externalInvincible = invincible;
-        UpdateFlash();
-    }
-
-    private void UpdateFlash()
-    {
-        if (IsInvincible)
-        {
-            if (_flashCoroutine == null)
-                _flashCoroutine = StartCoroutine(FlashCoroutine());
-        }
-        else
-        {
-            if (_flashCoroutine != null) { StopCoroutine(_flashCoroutine); _flashCoroutine = null; }
-            SetSpritesVisible(true);
-        }
-    }
-
-    private IEnumerator FlashCoroutine()
-    {
-        bool visible = true;
-        while (true)
+        float elapsed = 0f;
+        bool  visible = true;
+        while (elapsed < duration)
         {
             visible = !visible;
-            SetSpritesVisible(visible);
+            foreach (var sr in sprites) if (sr != null) sr.enabled = visible;
             yield return new WaitForSeconds(0.1f);
+            elapsed += 0.1f;
         }
+        foreach (var sr in sprites) if (sr != null) sr.enabled = true;
     }
 
-    private void SetSpritesVisible(bool visible)
+    void NotifyGameOver()
     {
-        foreach (var sr in _sprites)
-            if (sr != null) sr.enabled = visible;
+        // PvP: LivesManager.OnPlayerEliminated event is already wired to PvPGameManager
+        if (PvPGameManager.Instance != null) return;
+        if (GameManager.Instance != null)
+            GameManager.Instance.PlayerCrashed();
+        else
+            UnityEngine.SceneManagement.SceneManager.LoadScene(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
     }
+
+    void OnEnable() { hasCrashed = false; }
 }

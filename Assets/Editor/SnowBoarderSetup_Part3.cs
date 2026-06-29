@@ -2,19 +2,15 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
-using UnityEngine.Events;
 using UnityEngine.UI;
-using UnityEngine.Tilemaps;
 using TMPro;
 
 public static class SnowBoarderSetup_Part3
 {
-    const string SCENES   = "Assets/Scenes";
-    const string PREFABS  = "Assets/Prefabs";
-    const string AUDIO    = "Assets/Audio";
-    const string SPRITES  = "Assets/Sprites";
-    const string INPUT_P1 = "Assets/Scripts/Player/InputConfig_P1.asset";
-    const string INPUT_P2 = "Assets/Scripts/Player/InputConfig_P2.asset";
+    const string SCENES  = "Assets/Scenes";
+    const string PREFABS = "Assets/Prefabs";
+    const string AUDIO   = "Assets/Audio";
+    const string SPRITES = "Assets/Sprites";
 
     [MenuItem("SnowBoarder/Setup/Part 3 – Wire Scenes")]
     public static void RunPart3()
@@ -216,13 +212,14 @@ public static class SnowBoarderSetup_Part3
             }
         }
 
-        void WireCam(string camName, GameObject playerTarget)
+        void WireCam(string camName, GameObject playerTarget, string pTag)
         {
             var camGO = GameObject.Find(camName);
             if (camGO == null) return;
             var cf   = camGO.GetComponent<CameraFollow>() ?? camGO.AddComponent<CameraFollow>();
             var cfSO = new SerializedObject(cf);
             SetRef(cfSO, "target", playerTarget.transform);
+            cfSO.FindProperty("playerTag").stringValue = pTag;
             cfSO.ApplyModifiedProperties();
 
             Vector3 off     = new Vector3(0f, 2f, -10f);
@@ -231,8 +228,8 @@ public static class SnowBoarderSetup_Part3
             camGO.transform.position = snapPos;
         }
 
-        WireCam("Main Camera", p1GO);
-        WireCam("Camera2",     p2GO);
+        WireCam("Main Camera", p1GO, "Player");
+        WireCam("Camera2",     p2GO, "Player2");
 
         var pvpCam1 = GameObject.Find("Main Camera")?.GetComponent<Camera>();
         if (pvpCam1 != null) ApplySharedCamSettings(pvpCam1, 0, new Rect(0f, 0f, 0.5f, 1f));
@@ -242,6 +239,7 @@ public static class SnowBoarderSetup_Part3
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
 
+        EnsureTerrainTag();
         BuildPausePanel();
 
         EditorSceneManager.SaveScene(scene);
@@ -310,14 +308,14 @@ public static class SnowBoarderSetup_Part3
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
 
-        // Solo: Cinemachine VirtualCamera already follows the player — remove any stale CameraFollow
-        // that would conflict with CinemachineBrain on the Main Camera.
+        // Solo: remove stale CameraFollow from cameras (Cinemachine already follows the player)
         foreach (var cam in Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             var stale = cam.GetComponent<CameraFollow>();
             if (stale != null) Object.DestroyImmediate(stale);
         }
 
+        EnsureTerrainTag();
         BuildPausePanel();
 
         EditorSceneManager.SaveScene(scene);
@@ -432,7 +430,6 @@ public static class SnowBoarderSetup_Part3
 
     static void WirePlayerComponents(GameObject pGO, Transform respawn, AudioClip crashClip, string playerTag)
     {
-        // Update Rigidbody2D physics to match our tuned player spec
         var rb = pGO.GetComponent<Rigidbody2D>();
         if (rb != null)
         {
@@ -444,41 +441,35 @@ public static class SnowBoarderSetup_Part3
             EditorUtility.SetDirty(rb);
         }
 
-        // Add our custom scripts to this player if missing (e.g. adopted original scene player)
-        if (!pGO.GetComponent<PlayerController>())             pGO.AddComponent<PlayerController>();
-        if (!pGO.GetComponent<ScoreManager>())                 pGO.AddComponent<ScoreManager>();
-        if (!pGO.GetComponent<LivesManager>())                 pGO.AddComponent<LivesManager>();
-        if (!pGO.GetComponent<TrickManager>())                 pGO.AddComponent<TrickManager>();
-        if (!pGO.GetComponentInChildren<CrashHandler>())       pGO.AddComponent<CrashHandler>();
-        if (!pGO.GetComponentInChildren<GroundChecker>())      pGO.AddComponent<GroundChecker>();
+        if (!pGO.GetComponent<PlayerController>())        pGO.AddComponent<PlayerController>();
+        if (!pGO.GetComponent<ScoreManager>())            pGO.AddComponent<ScoreManager>();
+        if (!pGO.GetComponent<LivesManager>())            pGO.AddComponent<LivesManager>();
+        if (!pGO.GetComponent<TrickManager>())            pGO.AddComponent<TrickManager>();
+        if (!pGO.GetComponentInChildren<CrashHandler>())  pGO.AddComponent<CrashHandler>();
+        if (!pGO.GetComponentInChildren<GroundChecker>()) pGO.AddComponent<GroundChecker>();
 
         var pAS = pGO.GetComponent<AudioSource>();
         if (pAS == null) pAS = pGO.AddComponent<AudioSource>();
         pAS.playOnAwake = false;
 
+        // playerIndex: 0 = P1 (arrow keys), 1 = P2 (WASD)
         var ctrl = pGO.GetComponent<PlayerController>();
         if (ctrl != null)
         {
-            string inputPath = (playerTag == "Player") ? INPUT_P1 : INPUT_P2;
-            var cfg = AssetDatabase.LoadAssetAtPath<InputConfig>(inputPath);
-            if (cfg != null)
-            {
-                var so = new SerializedObject(ctrl);
-                SetRef(so, "inputConfig", cfg);
-                so.ApplyModifiedProperties();
-            }
-            else Debug.LogWarning($"[Part3] InputConfig not found at {inputPath} — run Part 1 first.");
+            var so = new SerializedObject(ctrl);
+            so.FindProperty("playerIndex").intValue = (playerTag == "Player") ? 0 : 1;
+            so.ApplyModifiedProperties();
         }
 
         var crash = pGO.GetComponentInChildren<CrashHandler>();
         if (crash != null)
         {
             var so = new SerializedObject(crash);
-            SetRef(so, "livesManager",  pGO.GetComponent<LivesManager>());
-            SetRef(so, "trickManager",  pGO.GetComponent<TrickManager>());
-            SetRef(so, "audioSource",   pAS);
-            SetRef(so, "crashClip",     crashClip);
-            SetRef(so, "respawnPoint",  respawn);
+            SetRef(so, "livesManager", pGO.GetComponent<LivesManager>());
+            SetRef(so, "trickManager", pGO.GetComponent<TrickManager>());
+            SetRef(so, "audioSource",  pAS);
+            SetRef(so, "crashClip",    crashClip);
+            SetRef(so, "respawnPoint", respawn);
             so.ApplyModifiedProperties();
         }
 
@@ -486,18 +477,7 @@ public static class SnowBoarderSetup_Part3
         if (trick != null)
         {
             var so = new SerializedObject(trick);
-            SetRef(so, "groundChecker", pGO.GetComponentInChildren<GroundChecker>());
-            SetRef(so, "scoreManager",  pGO.GetComponent<ScoreManager>());
-            so.ApplyModifiedProperties();
-        }
-
-        var gc = pGO.GetComponentInChildren<GroundChecker>();
-        if (gc != null)
-        {
-            var so = new SerializedObject(gc);
-            so.FindProperty("groundLayer").intValue = ~0;
-            var rayProp = so.FindProperty("rayLength");
-            if (rayProp != null) rayProp.floatValue = 1.3f;
+            SetRef(so, "scoreManager", pGO.GetComponent<ScoreManager>());
             so.ApplyModifiedProperties();
         }
 
@@ -695,32 +675,38 @@ public static class SnowBoarderSetup_Part3
         return btn;
     }
 
-    static void EnsureTerrainCollision()
+    // Tag the terrain collider object as "Ground" so CrashHandler.OnTriggerEnter2D fires correctly.
+    static void EnsureTerrainTag()
     {
-        var tilemaps = Object.FindObjectsByType<Tilemap>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (var tm in tilemaps)
+        EnsureTagExists("Ground");
+        // SpriteShape terrain: find any object with EdgeCollider2D or SurfaceEffector2D on it
+        foreach (var col in Object.FindObjectsByType<Collider2D>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            var go = tm.gameObject;
-
-            var rb = go.GetComponent<Rigidbody2D>();
-            if (rb == null) rb = go.AddComponent<Rigidbody2D>();
-            rb.bodyType = RigidbodyType2D.Static;
-
-            var tc = go.GetComponent<TilemapCollider2D>();
-            if (tc == null) tc = go.AddComponent<TilemapCollider2D>();
-
-            var cc = go.GetComponent<CompositeCollider2D>();
-            if (cc == null) cc = go.AddComponent<CompositeCollider2D>();
-            cc.geometryType  = CompositeCollider2D.GeometryType.Polygons;
-            cc.generationType = CompositeCollider2D.GenerationType.Synchronous;
-
-            tc.usedByComposite = true;
-
-            Debug.Log($"[Part3] Terrain collision set up on {go.name}");
+            var go = col.gameObject;
+            if (go.tag == "Ground") continue;
+            bool isTerrain = (col is EdgeCollider2D) ||
+                             go.GetComponent<SurfaceEffector2D>() != null ||
+                             go.name.Contains("Level") ||
+                             go.name.Contains("Ground") ||
+                             go.name.Contains("Slope");
+            if (!isTerrain) continue;
+            go.tag = "Ground";
+            EditorUtility.SetDirty(go);
+            Debug.Log($"[Part3] Tagged '{go.name}' as Ground");
         }
+    }
 
-        if (tilemaps.Length == 0)
-            Debug.LogWarning("[Part3] No Tilemap found in scene — add terrain tiles manually.");
+    static void EnsureTagExists(string tag)
+    {
+        var asset = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
+        if (asset == null || asset.Length == 0) return;
+        var so = new SerializedObject(asset[0]);
+        var tags = so.FindProperty("tags");
+        for (int i = 0; i < tags.arraySize; i++)
+            if (tags.GetArrayElementAtIndex(i).stringValue == tag) return;
+        tags.InsertArrayElementAtIndex(tags.arraySize);
+        tags.GetArrayElementAtIndex(tags.arraySize - 1).stringValue = tag;
+        so.ApplyModifiedProperties();
     }
 
     static void ApplySharedCamSettings(Camera cam, int depth, Rect rect)

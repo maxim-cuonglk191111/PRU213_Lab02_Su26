@@ -89,7 +89,7 @@ public static class SnowBoarderSetup_Part1
 
     static void EnsureTags()
     {
-        string[] requiredTags = { "Player2", "Obstacle", "Pickup", "PowerUp" };
+        string[] requiredTags = { "Ground", "Player2", "Obstacle", "Pickup", "PowerUp" };
         var asset = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
         if (asset != null && asset.Length > 0)
         {

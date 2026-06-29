@@ -1,53 +1,44 @@
 using UnityEngine;
 
-/// <summary>
-/// Tracks airtime and awards trick points.
-/// Reads GroundChecker.IsGrounded every FixedUpdate.
-/// </summary>
 public class TrickManager : MonoBehaviour
 {
-    // ── Inspector ──────────────────────────────────────────────
     [Header("References")]
-    [SerializeField] private GroundChecker groundChecker;
-    [SerializeField] private ScoreManager  scoreManager;
+    [SerializeField] private ScoreManager scoreManager;
+    [SerializeField] private HUDManager   hudManager;
 
-    [Header("Toast UI (optional)")]
-    [Tooltip("Call ShowToast(string) on this if assigned.")]
-    [SerializeField] private HUDManager hudManager;   // may be null in PvP — set via HUDManager_PvP
+    PlayerController playerController;
+    bool  wasGrounded = true;
+    float airTimer;
 
-    // ── State ──────────────────────────────────────────────────
-    private bool  _wasGrounded = true;
-    private float _airTimer;
-
-    // ── Unity Lifecycle ────────────────────────────────────────
-    private void Awake()
+    void Awake()
     {
-        if (groundChecker == null)
-            groundChecker = GetComponentInChildren<GroundChecker>();
-        if (scoreManager == null)
-            scoreManager = GetComponent<ScoreManager>();
+        if (scoreManager == null) scoreManager = GetComponent<ScoreManager>();
+        playerController = GetComponent<PlayerController>();
     }
 
-    private void FixedUpdate()
+    void Start()
     {
-        bool grounded = groundChecker != null && groundChecker.IsGrounded;
+        if (playerController == null) playerController = GetComponent<PlayerController>();
+    }
+
+    void FixedUpdate()
+    {
+        bool grounded = playerController == null || playerController.IsGrounded();
 
         if (!grounded)
         {
-            _airTimer += Time.fixedDeltaTime;
+            airTimer += Time.fixedDeltaTime;
         }
-        else if (!_wasGrounded && grounded)
+        else if (!wasGrounded && grounded)
         {
-            // Just landed
-            EvaluateTrick(_airTimer);
-            _airTimer = 0f;
+            EvaluateTrick(airTimer);
+            airTimer = 0f;
         }
 
-        _wasGrounded = grounded;
+        wasGrounded = grounded;
     }
 
-    // ── Trick Evaluation ───────────────────────────────────────
-    private void EvaluateTrick(float airTime)
+    void EvaluateTrick(float airTime)
     {
         if (airTime < 0.5f) return;
 
@@ -57,7 +48,7 @@ public class TrickManager : MonoBehaviour
             scoreManager?.IncrementMultiplier();
             hudManager?.ShowToast("Big Air! +300");
         }
-        else // 0.5 – 0.99 s
+        else
         {
             scoreManager?.AddScore(100);
             scoreManager?.IncrementMultiplier();
@@ -65,10 +56,9 @@ public class TrickManager : MonoBehaviour
         }
     }
 
-    /// <summary>Called by CrashHandler on crash — resets the multiplier.</summary>
     public void OnCrash()
     {
         scoreManager?.ResetMultiplier();
-        _airTimer = 0f;
+        airTimer = 0f;
     }
 }
