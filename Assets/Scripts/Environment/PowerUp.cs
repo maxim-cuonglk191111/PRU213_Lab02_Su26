@@ -32,7 +32,8 @@ public class PowerUp : MonoBehaviour
         // Hide visually but keep GameObject alive so coroutines keep running
         var sr = GetComponent<SpriteRenderer>();
         if (sr != null) sr.enabled = false;
-        GetComponent<Collider2D>()?.enabled = false;
+        var col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
     }
 
     private IEnumerator ApplySpeedBoost(Rigidbody2D rb)

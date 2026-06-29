@@ -83,7 +83,7 @@ public class MainMenuManager : MonoBehaviour
     /// <summary>Ensures an EventSystem exists — without it no button click registers.</summary>
     static void EnsureEventSystem()
     {
-        if (FindObjectsByType<EventSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length == 0)
+        if (FindObjectsByType<EventSystem>(FindObjectsInactive.Include).Length == 0)
         {
             var esGO = new GameObject("EventSystem");
             esGO.AddComponent<EventSystem>();

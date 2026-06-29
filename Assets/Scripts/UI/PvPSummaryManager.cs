@@ -45,7 +45,7 @@ public class PvPSummaryManager : MonoBehaviour
 
     static void EnsureEventSystem()
     {
-        if (FindObjectsByType<EventSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length == 0)
+        if (FindObjectsByType<EventSystem>(FindObjectsInactive.Include).Length == 0)
         {
             var es = new GameObject("EventSystem");
             es.AddComponent<EventSystem>();

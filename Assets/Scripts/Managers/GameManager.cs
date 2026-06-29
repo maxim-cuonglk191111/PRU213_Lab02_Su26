@@ -68,7 +68,7 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 0f;
 
         // Save score before leaving the gameplay scene
-        var sm = Object.FindFirstObjectByType<ScoreManager>();
+        var sm = Object.FindAnyObjectByType<ScoreManager>();
         if (sm != null)
         {
             PlayerPrefs.SetInt("LastScore", sm.CurrentScore);
