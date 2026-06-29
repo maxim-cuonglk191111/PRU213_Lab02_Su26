@@ -249,6 +249,18 @@ public static class SnowBoarderSetup_Part3
         WireCam("Main Camera", p1GO);
         WireCam("Camera2", p2GO);
 
+        // Camera2: must use SolidColor clear so the right viewport isn't black
+        var cam2GO = GameObject.Find("Camera2");
+        if (cam2GO != null)
+        {
+            var cam2 = cam2GO.GetComponent<Camera>();
+            if (cam2 != null)
+            {
+                cam2.clearFlags      = CameraClearFlags.SolidColor;
+                cam2.backgroundColor = new Color(0.52f, 0.80f, 0.98f, 1f);  // sky blue
+            }
+        }
+
         // Snowflake pickups already in scene
         foreach (var ph in Object.FindObjectsByType<PickupHandler>(FindObjectsInactive.Exclude))
             SetField(ph, "pickupClip", pickupClip);
@@ -483,6 +495,15 @@ public static class SnowBoarderSetup_Part3
             var so = new SerializedObject(trick);
             SetRef(so, "groundChecker", pGO.GetComponentInChildren<GroundChecker>());
             SetRef(so, "scoreManager",  pGO.GetComponent<ScoreManager>());
+            so.ApplyModifiedProperties();
+        }
+
+        // GroundChecker: default groundLayer=0 = "Nothing" → raycast hits nothing → always airborne
+        var gc = pGO.GetComponentInChildren<GroundChecker>();
+        if (gc != null)
+        {
+            var so = new SerializedObject(gc);
+            so.FindProperty("groundLayer").intValue = ~0;  // "Everything" (-1 as int)
             so.ApplyModifiedProperties();
         }
 

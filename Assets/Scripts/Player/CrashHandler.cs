@@ -3,8 +3,11 @@ using UnityEngine;
 
 /// <summary>
 /// Attached to the Boarder_Top child collider.
-/// Detects crash (head contact with Obstacle tag), deducts a life, plays SFX, and respawns.
-/// Sprites flash during invincibility from both crash respawn and external power-up sources.
+/// Detects crashes via three paths:
+///   1. Head hits an Obstacle-tagged object
+///   2. Player rotation exceeds flipDeathAngle from upright (upside-down)
+///   3. Player falls below killBelowY (out-of-bounds)
+/// Sprites flash during invincibility from both crash respawn and power-up sources.
 /// </summary>
 public class CrashHandler : MonoBehaviour
 {
@@ -27,6 +30,14 @@ public class CrashHandler : MonoBehaviour
 
     [Tooltip("Duration (seconds) of post-crash invincibility.")]
     [SerializeField] private float invincibilityDuration = 1.5f;
+
+    [Header("Upside-Down Detection")]
+    [Tooltip("Degrees from upright at which flipping counts as a crash. 90=sideways, 100=just-past-sideways, 120=generous.")]
+    [SerializeField] private float flipDeathAngle = 100f;
+
+    [Header("Out-of-Bounds")]
+    [Tooltip("If the player's Y drops below this, they respawn (fell off the level).")]
+    [SerializeField] private float killBelowY = -20f;
 
     // ── State ──────────────────────────────────────────────────
     private bool _respawnInvincible;
@@ -51,6 +62,25 @@ public class CrashHandler : MonoBehaviour
             trickManager = root.GetComponentInChildren<TrickManager>();
     }
 
+    private void Update()
+    {
+        if (IsInvincible) return;
+
+        Transform root = transform.root;
+
+        // Out-of-bounds: fell off the level
+        if (root.position.y < killBelowY)
+        {
+            HandleCrash();
+            return;
+        }
+
+        // Upside-down: eulerAngles.z in [0,360). Dead zone: (flipDeathAngle, 360-flipDeathAngle)
+        float angle = root.eulerAngles.z;
+        if (angle > flipDeathAngle && angle < 360f - flipDeathAngle)
+            HandleCrash();
+    }
+
     private void OnCollisionEnter2D(Collision2D col)
     {
         if (IsInvincible) return;
@@ -61,6 +91,10 @@ public class CrashHandler : MonoBehaviour
     // ── Crash Logic ────────────────────────────────────────────
     private void HandleCrash()
     {
+        // Set invincibility immediately to block re-entrant triggers this frame
+        _respawnInvincible = true;
+        UpdateFlash();
+
         if (audioSource != null && crashClip != null)
             audioSource.PlayOneShot(crashClip, 0.8f);
 
@@ -75,8 +109,7 @@ public class CrashHandler : MonoBehaviour
 
     private IEnumerator RespawnRoutine()
     {
-        _respawnInvincible = true;
-        UpdateFlash();
+        // _respawnInvincible is already true, set by HandleCrash
         _controller?.SetInputEnabled(false);
 
         if (_rb != null)

@@ -13,15 +13,18 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private InputConfig inputConfig;
 
     [Header("Physics")]
-    [Tooltip("Torque applied per frame when rotating.")]
-    [SerializeField] private float rotationSpeed = 25f;
+    [Tooltip("Torque applied per frame when rotating. Higher = snappier turns.")]
+    [SerializeField] private float rotationSpeed = 100f;
 
-    [Tooltip("Force applied per frame when thrusting.")]
-    [SerializeField] private float thrustForce = 15f;
+    [Tooltip("Force applied per frame when thrusting (up key). Higher = stronger boost.")]
+    [SerializeField] private float thrustForce = 40f;
+
+    [Tooltip("Cap on angular velocity (degrees/s). Prevents uncontrollable spinning.")]
+    [SerializeField] private float maxAngularSpeed = 300f;
 
     // ── Private ────────────────────────────────────────────────
     private Rigidbody2D _rb;
-    private bool _isDisabled;  // set true when game is over / paused
+    private bool _isDisabled;
 
     // ── Unity Lifecycle ────────────────────────────────────────
     private void Awake()
@@ -47,6 +50,9 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKey(inputConfig.rotateRight))
             _rb.AddTorque(-rotationSpeed * Time.fixedDeltaTime * 60f);
+
+        // Clamp angular velocity to prevent uncontrollable spinning
+        _rb.angularVelocity = Mathf.Clamp(_rb.angularVelocity, -maxAngularSpeed, maxAngularSpeed);
     }
 
     private void HandleThrust()
